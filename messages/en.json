@@ -71,7 +71,13 @@
       "oldest": "Oldest",
       "button": "Filters",
       "clear": "Clear",
-      "clearFilters": "Clear Filters"
+      "clearFilters": "Clear Filters",
+      "access": "Access Type",
+      "dateRange": "Date Range",
+      "allTime": "All Time",
+      "lastWeek": "Last Week",
+      "lastMonth": "Last Month",
+      "last3Months": "Last 3 Months"
     },
     "searchPlaceholder": "Search content...",
     "resultsCount": "{count} content items",
