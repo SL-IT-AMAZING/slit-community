@@ -1,0 +1,280 @@
+{
+  "common": {
+    "siteName": "AI Community",
+    "siteDescription": "AI 입문자를 위한 뉴스, 트렌드, 오픈소스 큐레이션 플랫폼",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "notFound": "페이지를 찾을 수 없습니다",
+    "search": "검색",
+    "searchPlaceholder": "검색어를 입력하세요...",
+    "readMore": "더 보기",
+    "viewAll": "전체 보기",
+    "back": "뒤로",
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "수정",
+    "submit": "제출"
+  },
+  "nav": {
+    "home": "홈",
+    "content": "콘텐츠",
+    "categories": "카테고리",
+    "premium": "프리미엄",
+    "login": "로그인",
+    "register": "회원가입",
+    "profile": "프로필",
+    "bookmarks": "북마크",
+    "logout": "로그아웃",
+    "admin": "관리자"
+  },
+  "home": {
+    "hero": {
+      "title": "AI 세계로의 여정을 시작하세요",
+      "subtitle": "최신 AI 뉴스, 트렌드, 튜토리얼을 한 곳에서 만나보세요",
+      "cta": "콘텐츠 둘러보기"
+    },
+    "featured": {
+      "title": "추천 콘텐츠",
+      "subtitle": "에디터가 선정한 이번 주 필독 콘텐츠"
+    },
+    "latest": {
+      "title": "최신 콘텐츠",
+      "subtitle": "방금 업데이트된 AI 소식들"
+    },
+    "categories": {
+      "title": "카테고리별 탐색",
+      "subtitle": "관심 분야의 콘텐츠를 찾아보세요"
+    },
+    "newsletter": {
+      "title": "뉴스레터 구독",
+      "subtitle": "매주 엄선된 AI 콘텐츠를 이메일로 받아보세요",
+      "placeholder": "이메일 주소",
+      "button": "구독하기",
+      "success": "구독이 완료되었습니다!",
+      "error": "구독에 실패했습니다. 다시 시도해주세요."
+    }
+  },
+  "content": {
+    "hub": {
+      "title": "콘텐츠 허브",
+      "subtitle": "AI에 관한 모든 콘텐츠를 탐색하세요"
+    },
+    "filters": {
+      "all": "전체",
+      "type": "유형",
+      "contentType": "콘텐츠 유형",
+      "category": "카테고리",
+      "sort": "정렬",
+      "newest": "최신순",
+      "popular": "인기순",
+      "oldest": "오래된순",
+      "button": "필터",
+      "clear": "초기화",
+      "clearFilters": "필터 초기화"
+    },
+    "searchPlaceholder": "콘텐츠 검색...",
+    "resultsCount": "{count}개의 콘텐츠",
+    "noResults": "검색 결과가 없습니다.",
+    "empty": "콘텐츠가 없습니다",
+    "premium": "프리미엄",
+    "free": "무료",
+    "views": "조회",
+    "bookmarks": "북마크",
+    "share": "공유",
+    "bookmark": {
+      "add": "북마크 추가",
+      "remove": "북마크 제거",
+      "added": "북마크에 추가되었습니다",
+      "removed": "북마크에서 제거되었습니다"
+    },
+    "backToList": "목록으로",
+    "premiumTitle": "프리미엄 콘텐츠",
+    "premiumGateDescription": "이 콘텐츠는 프리미엄 구독자만 이용할 수 있습니다. 구독하고 모든 프리미엄 콘텐츠를 즐겨보세요.",
+    "subscribeToPremium": "프리미엄 구독하기",
+    "viewOriginal": "원문 보기",
+    "tags": "태그",
+    "bookmarked": "북마크됨",
+    "bookmarkButton": "북마크"
+  },
+  "contentTypes": {
+    "article": "아티클",
+    "news": "뉴스",
+    "video": "비디오",
+    "open-source": "오픈소스",
+    "x-thread": "X 쓰레드",
+    "linkedin": "LinkedIn",
+    "threads": "Threads",
+    "reddit": "Reddit",
+    "newsletter": "뉴스레터",
+    "monetization-guide": "수익화 가이드"
+  },
+  "platforms": {
+    "all": "전체",
+    "youtube": "YouTube",
+    "x": "X",
+    "linkedin": "LinkedIn",
+    "threads": "Threads",
+    "github": "GitHub",
+    "reddit": "Reddit"
+  },
+  "social": {
+    "views": "조회수",
+    "likes": "좋아요",
+    "comments": "댓글",
+    "retweets": "리트윗",
+    "replies": "답글",
+    "reposts": "리포스트",
+    "stars": "스타",
+    "forks": "포크",
+    "issues": "이슈",
+    "upvotes": "업보트",
+    "downvotes": "다운보트",
+    "trending": "트렌드",
+    "subscribers": "구독자",
+    "duration": "재생 시간",
+    "watchNow": "시청하기",
+    "readMore": "더 보기",
+    "viewOnGithub": "GitHub에서 보기",
+    "viewOnReddit": "Reddit에서 보기"
+  },
+  "categories": {
+    "ai-basics": "AI 기초",
+    "llm": "LLM/언어모델",
+    "image-generation": "이미지 생성",
+    "ai-tools": "AI 도구",
+    "tutorials": "튜토리얼",
+    "industry-trends": "산업 트렌드",
+    "open-source": "오픈소스",
+    "ai-monetization": "AI 수익화",
+    "research-papers": "연구/논문"
+  },
+  "auth": {
+    "login": {
+      "title": "로그인",
+      "subtitle": "AI Community에 오신 것을 환영합니다",
+      "email": "이메일",
+      "password": "비밀번호",
+      "button": "로그인",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "noAccount": "계정이 없으신가요?",
+      "register": "회원가입",
+      "or": "또는",
+      "withGoogle": "Google로 로그인",
+      "withGithub": "GitHub로 로그인"
+    },
+    "register": {
+      "title": "회원가입",
+      "subtitle": "AI 여정을 함께 시작하세요",
+      "name": "이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "confirmPassword": "비밀번호 확인",
+      "button": "가입하기",
+      "hasAccount": "이미 계정이 있으신가요?",
+      "login": "로그인"
+    },
+    "forgotPassword": {
+      "title": "비밀번호 재설정",
+      "subtitle": "가입하신 이메일을 입력해주세요",
+      "button": "재설정 링크 보내기",
+      "success": "비밀번호 재설정 링크를 보냈습니다"
+    }
+  },
+  "profile": {
+    "title": "프로필",
+    "settings": "설정",
+    "displayName": "표시 이름",
+    "email": "이메일",
+    "language": "언어",
+    "theme": "테마",
+    "darkMode": "다크 모드",
+    "lightMode": "라이트 모드",
+    "subscription": "구독 상태",
+    "bookmarks": {
+      "title": "내 북마크",
+      "empty": "저장한 콘텐츠가 없습니다"
+    },
+    "update": "프로필 업데이트",
+    "updated": "프로필이 업데이트되었습니다"
+  },
+  "premium": {
+    "title": "프리미엄 구독",
+    "subtitle": "더 깊은 AI 인사이트를 경험하세요",
+    "features": {
+      "title": "프리미엄 혜택",
+      "allContent": "모든 프리미엄 콘텐츠 접근",
+      "noAds": "광고 없는 환경",
+      "earlyAccess": "신규 콘텐츠 우선 접근",
+      "exclusiveReports": "독점 분석 리포트",
+      "prioritySupport": "우선 고객 지원"
+    },
+    "plans": {
+      "monthly": {
+        "name": "월간 구독",
+        "price": "₩9,900",
+        "period": "/월"
+      },
+      "yearly": {
+        "name": "연간 구독",
+        "price": "₩79,000",
+        "period": "/년",
+        "discount": "33% 할인"
+      }
+    },
+    "subscribe": "구독하기",
+    "currentPlan": "현재 플랜",
+    "cancel": "구독 취소",
+    "manage": "구독 관리",
+    "success": {
+      "title": "구독 완료!",
+      "subtitle": "프리미엄 멤버가 되신 것을 환영합니다",
+      "button": "콘텐츠 보러가기"
+    }
+  },
+  "payment": {
+    "method": "결제 수단",
+    "card": "신용카드/체크카드",
+    "toss": "토스페이",
+    "crypto": "암호화폐",
+    "processing": "결제 처리 중...",
+    "success": "결제가 완료되었습니다",
+    "error": "결제에 실패했습니다. 다시 시도해주세요."
+  },
+  "admin": {
+    "dashboard": "대시보드",
+    "content": "콘텐츠 관리",
+    "users": "사용자 관리",
+    "subscriptions": "구독 관리",
+    "analytics": "통계",
+    "accessDenied": "접근 권한 없음",
+    "adminRequired": "관리자 권한이 필요합니다.",
+    "stats": {
+      "totalContent": "전체 콘텐츠",
+      "premiumContent": "프리미엄 콘텐츠",
+      "totalUsers": "전체 사용자",
+      "premiumUsers": "프리미엄 사용자",
+      "revenue": "월 수익"
+    },
+    "contentForm": {
+      "title": "제목",
+      "description": "설명",
+      "body": "본문",
+      "type": "유형",
+      "category": "카테고리",
+      "tags": "태그",
+      "thumbnail": "썸네일",
+      "isPremium": "프리미엄 콘텐츠",
+      "isFeatured": "추천 콘텐츠",
+      "publish": "게시",
+      "saveDraft": "임시저장"
+    }
+  },
+  "footer": {
+    "about": "소개",
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "contact": "문의",
+    "copyright": "© 2024 AI Community. All rights reserved."
+  }
+}
