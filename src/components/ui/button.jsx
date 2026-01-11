@@ -12,6 +12,7 @@ const buttonVariants = cva(
         default:
           "text-main-foreground bg-main border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
         noShadow: "text-main-foreground bg-main border-2 border-border",
+        flat: "text-main-foreground bg-main border-2 border-border",
         neutral:
           "bg-secondary-background text-foreground border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
         reverse:
@@ -20,6 +21,7 @@ const buttonVariants = cva(
         link: "underline-offset-4 hover:underline text-foreground",
         outline:
           "border-2 border-border bg-background text-foreground shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+        outlineFlat: "border-2 border-border bg-background text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground border-2 border-border hover:bg-secondary/80",
         destructive:
