@@ -102,7 +102,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card className="w-full shadow-none hover:translate-x-0 hover:translate-y-0">
+    <Card className="w-full" flat>
       <CardHeader className="text-center">
         <Link href="/" className="mb-4 inline-block">
           <span className="font-cera text-2xl font-bold">AI Community</span>
