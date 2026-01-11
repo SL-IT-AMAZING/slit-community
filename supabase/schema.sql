@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS content (
   )),
   category TEXT NOT NULL CHECK (category IN (
     'ai-basics', 'llm', 'image-generation', 'ai-tools',
-    'tutorials', 'industry-trends', 'open-source', 'ai-monetization', 'research-papers'
+    'claude-code', 'industry-trends', 'open-source', 'ai-monetization', 'research-papers'
   )),
   tags TEXT[] DEFAULT '{}',
   thumbnail_url TEXT,
@@ -274,7 +274,7 @@ INSERT INTO categories (slug, name, name_en, description, description_en, icon, 
   ('llm', 'LLM/언어모델', 'LLM', 'ChatGPT, Claude 등 대형 언어 모델', 'Large Language Models like ChatGPT, Claude', 'FaRobot', 2),
   ('image-generation', '이미지 생성', 'Image Generation', 'Midjourney, DALL-E, Stable Diffusion', 'AI image generation tools', 'FaImage', 3),
   ('ai-tools', 'AI 도구', 'AI Tools', '유용한 AI 도구 및 서비스', 'Useful AI tools and services', 'FaWrench', 4),
-  ('tutorials', '튜토리얼', 'Tutorials', '실습 가이드 및 튜토리얼', 'Hands-on guides and tutorials', 'FaGraduationCap', 5),
+  ('claude-code', '클로드코드', 'Claude Code', 'Claude Code 활용 가이드', 'Claude Code guides and tutorials', 'FaGraduationCap', 5),
   ('industry-trends', '업계 동향', 'Industry Trends', 'AI 업계 뉴스 및 트렌드', 'AI industry news and trends', 'FaChartLine', 6),
   ('open-source', '오픈소스', 'Open Source', '오픈소스 AI 프로젝트', 'Open source AI projects', 'FaCodeBranch', 7),
   ('ai-monetization', 'AI 수익화', 'AI Monetization', 'AI로 수익 창출하기', 'Making money with AI', 'FaDollarSign', 8),

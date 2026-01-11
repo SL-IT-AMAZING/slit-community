@@ -23,7 +23,7 @@ const categories = [
   "llm",
   "image-generation",
   "ai-tools",
-  "tutorials",
+  "claude-code",
   "industry-trends",
   "open-source",
   "ai-monetization",

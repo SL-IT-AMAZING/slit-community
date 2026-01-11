@@ -21,7 +21,7 @@ const categories = [
   { id: "llm", icon: FaBrain, count: 56 },
   { id: "image-generation", icon: FaLightbulb, count: 32 },
   { id: "ai-tools", icon: FaCode, count: 48 },
-  { id: "tutorials", icon: FaGraduationCap, count: 67 },
+  { id: "claude-code", icon: FaGraduationCap, count: 67 },
   { id: "industry-trends", icon: FaChartLine, count: 41 },
   { id: "open-source", icon: FaCode, count: 29 },
   { id: "ai-monetization", icon: FaCoins, count: 18 },
