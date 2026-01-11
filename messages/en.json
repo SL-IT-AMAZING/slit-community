@@ -20,7 +20,7 @@
     "home": "Home",
     "content": "Content",
     "categories": "Categories",
-    "ralph": "Ralph",
+    "homer": "Homer",
     "premium": "Premium",
     "login": "Login",
     "register": "Sign Up",
@@ -277,8 +277,8 @@
       "saveDraft": "Save Draft"
     }
   },
-  "ralph": {
-    "title": "Ralph",
+  "homer": {
+    "title": "Homer",
     "subtitle": "Curated sites for vibe coding",
     "featured": "Featured",
     "visit": "Visit",
