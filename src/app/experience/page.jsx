@@ -1,6 +1,6 @@
 import Layout from "@/components/layout/layout";
 
-import { fetchCollectionData } from "@/services/firebase";
+import { fetchCollectionData } from "@/services/supabase";
 import ExperienceCard from "@/components/sections/experience";
 
 export const dynamic = "force-dynamic";

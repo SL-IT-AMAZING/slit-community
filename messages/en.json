@@ -1,0 +1,280 @@
+{
+  "common": {
+    "siteName": "AI Community",
+    "siteDescription": "Curated AI news, trends, and open-source for beginners",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "notFound": "Page not found",
+    "search": "Search",
+    "searchPlaceholder": "Enter search term...",
+    "readMore": "Read More",
+    "viewAll": "View All",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
+  },
+  "nav": {
+    "home": "Home",
+    "content": "Content",
+    "categories": "Categories",
+    "premium": "Premium",
+    "login": "Login",
+    "register": "Sign Up",
+    "profile": "Profile",
+    "bookmarks": "Bookmarks",
+    "logout": "Logout",
+    "admin": "Admin"
+  },
+  "home": {
+    "hero": {
+      "title": "Start Your Journey into AI",
+      "subtitle": "Discover the latest AI news, trends, and tutorials in one place",
+      "cta": "Explore Content"
+    },
+    "featured": {
+      "title": "Featured Content",
+      "subtitle": "Editor's picks for this week"
+    },
+    "latest": {
+      "title": "Latest Content",
+      "subtitle": "Just updated AI news"
+    },
+    "categories": {
+      "title": "Browse by Category",
+      "subtitle": "Find content in your area of interest"
+    },
+    "newsletter": {
+      "title": "Subscribe to Newsletter",
+      "subtitle": "Get curated AI content delivered to your inbox weekly",
+      "placeholder": "Email address",
+      "button": "Subscribe",
+      "success": "Successfully subscribed!",
+      "error": "Subscription failed. Please try again."
+    }
+  },
+  "content": {
+    "hub": {
+      "title": "Content Hub",
+      "subtitle": "Explore all things AI"
+    },
+    "filters": {
+      "all": "All",
+      "type": "Type",
+      "contentType": "Content Type",
+      "category": "Category",
+      "sort": "Sort",
+      "newest": "Newest",
+      "popular": "Popular",
+      "oldest": "Oldest",
+      "button": "Filters",
+      "clear": "Clear",
+      "clearFilters": "Clear Filters"
+    },
+    "searchPlaceholder": "Search content...",
+    "resultsCount": "{count} content items",
+    "noResults": "No content found.",
+    "empty": "No content found",
+    "premium": "Premium",
+    "free": "Free",
+    "views": "Views",
+    "bookmarks": "Bookmarks",
+    "share": "Share",
+    "bookmark": {
+      "add": "Add Bookmark",
+      "remove": "Remove Bookmark",
+      "added": "Added to bookmarks",
+      "removed": "Removed from bookmarks"
+    },
+    "backToList": "Back to list",
+    "premiumTitle": "Premium Content",
+    "premiumGateDescription": "This content is available for premium subscribers only. Subscribe to enjoy all premium content.",
+    "subscribeToPremium": "Subscribe to Premium",
+    "viewOriginal": "View Original",
+    "tags": "Tags",
+    "bookmarked": "Bookmarked",
+    "bookmarkButton": "Bookmark"
+  },
+  "contentTypes": {
+    "article": "Article",
+    "news": "News",
+    "video": "Video",
+    "open-source": "Open Source",
+    "x-thread": "X Thread",
+    "linkedin": "LinkedIn",
+    "threads": "Threads",
+    "reddit": "Reddit",
+    "newsletter": "Newsletter",
+    "monetization-guide": "Monetization Guide"
+  },
+  "platforms": {
+    "all": "All",
+    "youtube": "YouTube",
+    "x": "X",
+    "linkedin": "LinkedIn",
+    "threads": "Threads",
+    "github": "GitHub",
+    "reddit": "Reddit"
+  },
+  "social": {
+    "views": "Views",
+    "likes": "Likes",
+    "comments": "Comments",
+    "retweets": "Retweets",
+    "replies": "Replies",
+    "reposts": "Reposts",
+    "stars": "Stars",
+    "forks": "Forks",
+    "issues": "Issues",
+    "upvotes": "Upvotes",
+    "downvotes": "Downvotes",
+    "trending": "Trending",
+    "subscribers": "Subscribers",
+    "duration": "Duration",
+    "watchNow": "Watch Now",
+    "readMore": "Read More",
+    "viewOnGithub": "View on GitHub",
+    "viewOnReddit": "View on Reddit"
+  },
+  "categories": {
+    "ai-basics": "AI Basics",
+    "llm": "LLM/Language Models",
+    "image-generation": "Image Generation",
+    "ai-tools": "AI Tools",
+    "tutorials": "Tutorials",
+    "industry-trends": "Industry Trends",
+    "open-source": "Open Source",
+    "ai-monetization": "AI Monetization",
+    "research-papers": "Research Papers"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "subtitle": "Welcome to AI Community",
+      "email": "Email",
+      "password": "Password",
+      "button": "Login",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "register": "Sign Up",
+      "or": "or",
+      "withGoogle": "Continue with Google",
+      "withGithub": "Continue with GitHub"
+    },
+    "register": {
+      "title": "Sign Up",
+      "subtitle": "Start your AI journey with us",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "button": "Sign Up",
+      "hasAccount": "Already have an account?",
+      "login": "Login"
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your registered email",
+      "button": "Send Reset Link",
+      "success": "Password reset link sent"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings",
+    "displayName": "Display Name",
+    "email": "Email",
+    "language": "Language",
+    "theme": "Theme",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "subscription": "Subscription Status",
+    "bookmarks": {
+      "title": "My Bookmarks",
+      "empty": "No saved content"
+    },
+    "update": "Update Profile",
+    "updated": "Profile updated"
+  },
+  "premium": {
+    "title": "Premium Subscription",
+    "subtitle": "Experience deeper AI insights",
+    "features": {
+      "title": "Premium Benefits",
+      "allContent": "Access to all premium content",
+      "noAds": "Ad-free experience",
+      "earlyAccess": "Early access to new content",
+      "exclusiveReports": "Exclusive analysis reports",
+      "prioritySupport": "Priority customer support"
+    },
+    "plans": {
+      "monthly": {
+        "name": "Monthly",
+        "price": "₩9,900",
+        "period": "/month"
+      },
+      "yearly": {
+        "name": "Yearly",
+        "price": "₩79,000",
+        "period": "/year",
+        "discount": "33% off"
+      }
+    },
+    "subscribe": "Subscribe",
+    "currentPlan": "Current Plan",
+    "cancel": "Cancel Subscription",
+    "manage": "Manage Subscription",
+    "success": {
+      "title": "Subscription Complete!",
+      "subtitle": "Welcome to Premium membership",
+      "button": "Browse Content"
+    }
+  },
+  "payment": {
+    "method": "Payment Method",
+    "card": "Credit/Debit Card",
+    "toss": "Toss Pay",
+    "crypto": "Cryptocurrency",
+    "processing": "Processing payment...",
+    "success": "Payment successful",
+    "error": "Payment failed. Please try again."
+  },
+  "admin": {
+    "dashboard": "Dashboard",
+    "content": "Content Management",
+    "users": "User Management",
+    "subscriptions": "Subscription Management",
+    "analytics": "Analytics",
+    "accessDenied": "Access Denied",
+    "adminRequired": "You need admin privileges to access this page.",
+    "stats": {
+      "totalContent": "Total Content",
+      "premiumContent": "Premium Content",
+      "totalUsers": "Total Users",
+      "premiumUsers": "Premium Users",
+      "revenue": "Monthly Revenue"
+    },
+    "contentForm": {
+      "title": "Title",
+      "description": "Description",
+      "body": "Body",
+      "type": "Type",
+      "category": "Category",
+      "tags": "Tags",
+      "thumbnail": "Thumbnail",
+      "isPremium": "Premium Content",
+      "isFeatured": "Featured Content",
+      "publish": "Publish",
+      "saveDraft": "Save Draft"
+    }
+  },
+  "footer": {
+    "about": "About",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "contact": "Contact",
+    "copyright": "© 2024 AI Community. All rights reserved."
+  }
+}

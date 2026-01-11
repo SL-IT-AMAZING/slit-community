@@ -37,6 +37,10 @@ const config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         "tx-accent": "hsl(Var(--accent-text))",
+        // Neobrutalism colors
+        main: "hsl(var(--main))",
+        "main-foreground": "hsl(var(--main-foreground))",
+        "secondary-background": "hsl(var(--secondary-background))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -72,10 +76,13 @@ const config = {
       boxShadow: {
         dark: "4px 4px 0px 0px rgba(0,0,0,1)",
         light: "4px 4px 0px 0px rgba(255, 255, 255, 1)",
+        shadow: "4px 4px 0px 0px hsl(var(--shadow))",
       },
       translate: {
         boxShadowX: "4px",
         boxShadowY: "4px",
+        reverseBoxShadowX: "-4px",
+        reverseBoxShadowY: "-4px",
       },
     },
   },
