@@ -6,7 +6,7 @@ import { Link } from "@/i18n/routing";
 
 const Footer = () => {
   const t = useTranslations("footer");
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(null);
 
   useEffect(() => {
     setYear(new Date().getFullYear());
@@ -25,7 +25,7 @@ const Footer = () => {
         <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
           <span className="font-cera text-lg font-bold">AI Community</span>
           <span className="text-xs text-muted-foreground">
-            &copy; {year} AI Community. All rights reserved.
+            &copy; {year ?? new Date().getFullYear()} AI Community. All rights reserved.
           </span>
         </div>
         <nav className="flex items-center gap-4">

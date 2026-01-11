@@ -111,7 +111,7 @@ export default async function LocaleLayout({ children, params }) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale} className="dark" suppressHydrationWarning>
       <body className={`${inter} ${roboto} ${ceraRoundPro}`}>
         <SessionProvider>
           <NextIntlClientProvider messages={messages}>
