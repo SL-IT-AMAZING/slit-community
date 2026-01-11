@@ -6,6 +6,13 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ContentCard from "@/components/content/content-card";
 
 import { FaMagnifyingGlass, FaFilter, FaXmark } from "react-icons/fa6";
@@ -23,17 +30,36 @@ const categories = [
   "research-papers",
 ];
 
+const getDateRangeFilter = (range) => {
+  const now = new Date();
+  switch (range) {
+    case "week":
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case "month":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case "3months":
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    default:
+      return null;
+  }
+};
+
 export default function ContentList({ initialContent, locale, initialType = null }) {
   const t = useTranslations();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState(initialType);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedTypes, setSelectedTypes] = useState(initialType ? [initialType] : []);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
 
+  // New filter states
+  const [premiumFilter, setPremiumFilter] = useState(null); // null | true | false
+  const [dateRange, setDateRange] = useState("all"); // "week" | "month" | "3months" | "all"
+  const [sortBy, setSortBy] = useState("newest"); // "newest" | "popular"
+
   const filteredContent = useMemo(() => {
-    return initialContent.filter((item) => {
+    let result = initialContent.filter((item) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -44,19 +70,43 @@ export default function ContentList({ initialContent, locale, initialType = null
         }
       }
 
-      // Type filter
-      if (selectedType && item.type !== selectedType) {
+      // Type filter (multiple selection)
+      if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) {
         return false;
       }
 
-      // Category filter
-      if (selectedCategory && item.category !== selectedCategory) {
+      // Category filter (multiple selection)
+      if (selectedCategories.length > 0 && !selectedCategories.includes(item.category)) {
         return false;
+      }
+
+      // Premium/Free filter
+      if (premiumFilter !== null && item.isPremium !== premiumFilter) {
+        return false;
+      }
+
+      // Date range filter
+      if (dateRange !== "all") {
+        const minDate = getDateRangeFilter(dateRange);
+        if (minDate && new Date(item.publishedAt) < minDate) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [initialContent, searchQuery, selectedType, selectedCategory, locale]);
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === "popular") {
+        return (b.viewCount || 0) - (a.viewCount || 0);
+      }
+      // Default: newest
+      return new Date(b.publishedAt) - new Date(a.publishedAt);
+    });
+
+    return result;
+  }, [initialContent, searchQuery, selectedTypes, selectedCategories, premiumFilter, dateRange, sortBy, locale]);
 
   const handleBookmarkToggle = (id) => {
     setBookmarkedIds((prev) => {
@@ -71,12 +121,21 @@ export default function ContentList({ initialContent, locale, initialType = null
   };
 
   const clearFilters = () => {
-    setSelectedType(null);
-    setSelectedCategory(null);
+    setSelectedTypes([]);
+    setSelectedCategories([]);
     setSearchQuery("");
+    setPremiumFilter(null);
+    setDateRange("all");
+    setSortBy("newest");
   };
 
-  const hasActiveFilters = selectedType || selectedCategory || searchQuery;
+  const hasActiveFilters = selectedTypes.length > 0 || selectedCategories.length > 0 || searchQuery || premiumFilter !== null || dateRange !== "all";
+
+  const activeFilterCount =
+    selectedTypes.length +
+    selectedCategories.length +
+    (premiumFilter !== null ? 1 : 0) +
+    (dateRange !== "all" ? 1 : 0);
 
   return (
     <div className="container py-8">
@@ -103,6 +162,17 @@ export default function ContentList({ initialContent, locale, initialType = null
             />
           </div>
 
+          {/* Sort Select */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder={t("content.filters.sort")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">{t("content.filters.newest")}</SelectItem>
+              <SelectItem value="popular">{t("content.filters.popular")}</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Filter Toggle */}
           <Button
             variant={showFilters ? "default" : "outline"}
@@ -111,9 +181,9 @@ export default function ContentList({ initialContent, locale, initialType = null
           >
             <FaFilter size={14} />
             {t("content.filters.button")}
-            {hasActiveFilters && (
+            {activeFilterCount > 0 && (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-xs text-primary">
-                {(selectedType ? 1 : 0) + (selectedCategory ? 1 : 0)}
+                {activeFilterCount}
               </span>
             )}
           </Button>
@@ -134,41 +204,99 @@ export default function ContentList({ initialContent, locale, initialType = null
               )}
             </div>
 
-            {/* Content Type Filter */}
-            <div className="mb-4">
-              <span className="mb-2 block text-sm font-medium">
-                {t("content.filters.contentType")}
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {contentTypes.map((type) => (
-                  <Badge
-                    key={type}
-                    variant={selectedType === type ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedType(selectedType === type ? null : type)}
-                  >
-                    {t(`contentTypes.${type}`)}
-                  </Badge>
-                ))}
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Content Type Filter */}
+              <div>
+                <span className="mb-2 block text-sm font-medium">
+                  {t("content.filters.contentType")}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {contentTypes.map((type) => (
+                    <Badge
+                      key={type}
+                      variant={selectedTypes.includes(type) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedTypes(prev =>
+                        prev.includes(type)
+                          ? prev.filter(t => t !== type)
+                          : [...prev, type]
+                      )}
+                    >
+                      {t(`contentTypes.${type}`)}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Category Filter */}
-            <div>
-              <span className="mb-2 block text-sm font-medium">
-                {t("content.filters.category")}
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
+              {/* Category Filter */}
+              <div>
+                <span className="mb-2 block text-sm font-medium">
+                  {t("content.filters.category")}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <Badge
+                      key={category}
+                      variant={selectedCategories.includes(category) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedCategories(prev =>
+                        prev.includes(category)
+                          ? prev.filter(c => c !== category)
+                          : [...prev, category]
+                      )}
+                    >
+                      {t(`categories.${category}`)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Premium/Free Filter */}
+              <div>
+                <span className="mb-2 block text-sm font-medium">
+                  {t("content.filters.access")}
+                </span>
+                <div className="flex flex-wrap gap-2">
                   <Badge
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
+                    variant={premiumFilter === null ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                    onClick={() => setPremiumFilter(null)}
                   >
-                    {t(`categories.${category}`)}
+                    {t("content.filters.all")}
                   </Badge>
-                ))}
+                  <Badge
+                    variant={premiumFilter === false ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setPremiumFilter(false)}
+                  >
+                    {t("content.free")}
+                  </Badge>
+                  <Badge
+                    variant={premiumFilter === true ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setPremiumFilter(true)}
+                  >
+                    {t("content.premium")}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Date Range Filter */}
+              <div>
+                <span className="mb-2 block text-sm font-medium">
+                  {t("content.filters.dateRange")}
+                </span>
+                <Select value={dateRange} onValueChange={setDateRange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("content.filters.allTime")}</SelectItem>
+                    <SelectItem value="week">{t("content.filters.lastWeek")}</SelectItem>
+                    <SelectItem value="month">{t("content.filters.lastMonth")}</SelectItem>
+                    <SelectItem value="3months">{t("content.filters.last3Months")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
