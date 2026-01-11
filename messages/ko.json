@@ -20,6 +20,7 @@
     "home": "홈",
     "content": "콘텐츠",
     "categories": "카테고리",
+    "ralph": "랄프",
     "premium": "프리미엄",
     "login": "로그인",
     "register": "회원가입",
@@ -147,9 +148,9 @@
   "categories": {
     "ai-basics": "AI 기초",
     "llm": "LLM/언어모델",
-    "image-generation": "이미지 생성",
+    "image-generation": "이미지/영상 생성",
     "ai-tools": "AI 도구",
-    "tutorials": "튜토리얼",
+    "claude-code": "클로드코드",
     "industry-trends": "산업 트렌드",
     "open-source": "오픈소스",
     "ai-monetization": "AI 수익화",
@@ -275,6 +276,13 @@
       "publish": "게시",
       "saveDraft": "임시저장"
     }
+  },
+  "ralph": {
+    "title": "랄프",
+    "subtitle": "바이브코딩에 유용한 사이트 큐레이션",
+    "featured": "추천",
+    "visit": "방문하기",
+    "description": "설명"
   },
   "footer": {
     "about": "소개",

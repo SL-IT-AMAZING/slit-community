@@ -20,6 +20,7 @@
     "home": "Home",
     "content": "Content",
     "categories": "Categories",
+    "ralph": "Ralph",
     "premium": "Premium",
     "login": "Login",
     "register": "Sign Up",
@@ -147,9 +148,9 @@
   "categories": {
     "ai-basics": "AI Basics",
     "llm": "LLM/Language Models",
-    "image-generation": "Image Generation",
+    "image-generation": "Image/Video Generation",
     "ai-tools": "AI Tools",
-    "tutorials": "Tutorials",
+    "claude-code": "Claude Code",
     "industry-trends": "Industry Trends",
     "open-source": "Open Source",
     "ai-monetization": "AI Monetization",
@@ -275,6 +276,13 @@
       "publish": "Publish",
       "saveDraft": "Save Draft"
     }
+  },
+  "ralph": {
+    "title": "Ralph",
+    "subtitle": "Curated sites for vibe coding",
+    "featured": "Featured",
+    "visit": "Visit",
+    "description": "Description"
   },
   "footer": {
     "about": "About",

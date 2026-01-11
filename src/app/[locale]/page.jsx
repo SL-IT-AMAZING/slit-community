@@ -30,7 +30,7 @@ const categories = [
   { id: "llm", icon: FaBrain },
   { id: "image-generation", icon: FaLightbulb },
   { id: "ai-tools", icon: FaCode },
-  { id: "tutorials", icon: FaGraduationCap },
+  { id: "claude-code", icon: FaGraduationCap },
   { id: "industry-trends", icon: FaChartLine },
   { id: "open-source", icon: FaCode },
   { id: "ai-monetization", icon: FaChartLine },

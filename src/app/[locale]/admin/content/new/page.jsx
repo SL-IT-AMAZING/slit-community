@@ -34,9 +34,9 @@ const SNS_TYPES = ["video", "x-thread", "linkedin", "threads", "open-source", "r
 const CATEGORIES = [
   { value: "ai-basics", label: "AI Basics", labelKo: "AI 기초" },
   { value: "llm", label: "LLM", labelKo: "LLM" },
-  { value: "image-generation", label: "Image Generation", labelKo: "이미지 생성" },
+  { value: "image-generation", label: "Image/Video Generation", labelKo: "이미지/영상 생성" },
   { value: "ai-tools", label: "AI Tools", labelKo: "AI 도구" },
-  { value: "tutorials", label: "Tutorials", labelKo: "튜토리얼" },
+  { value: "claude-code", label: "Claude Code", labelKo: "클로드코드" },
   { value: "industry-trends", label: "Industry Trends", labelKo: "업계 트렌드" },
   { value: "open-source", label: "Open Source", labelKo: "오픈소스" },
   { value: "ai-monetization", label: "AI Monetization", labelKo: "AI 수익화" },
