@@ -71,7 +71,13 @@
       "oldest": "오래된순",
       "button": "필터",
       "clear": "초기화",
-      "clearFilters": "필터 초기화"
+      "clearFilters": "필터 초기화",
+      "access": "접근 유형",
+      "dateRange": "기간",
+      "allTime": "전체 기간",
+      "lastWeek": "최근 1주일",
+      "lastMonth": "최근 1달",
+      "last3Months": "최근 3달"
     },
     "searchPlaceholder": "콘텐츠 검색...",
     "resultsCount": "{count}개의 콘텐츠",
