@@ -25,7 +25,7 @@ const NavigationBar = () => {
     { name: t("home"), path: "/" },
     { name: t("content"), path: "/content" },
     { name: t("categories"), path: "/categories" },
-    { name: t("ralph"), path: "/ralph" },
+    { name: t("homer"), path: "/homer" },
     { name: t("premium"), path: "/premium" },
   ];
 

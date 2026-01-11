@@ -85,7 +85,7 @@ const CURATED_SITES = [
   },
 ];
 
-export default function RalphPage({ params }) {
+export default function HomerPage({ params }) {
   setRequestLocale(params.locale);
   const t = useTranslations();
   const locale = params.locale;
@@ -93,9 +93,16 @@ export default function RalphPage({ params }) {
   return (
     <div className="container py-8">
       {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="mb-2 font-cera text-3xl font-bold">{t("ralph.title")}</h1>
-        <p className="text-muted-foreground">{t("ralph.subtitle")}</p>
+      <div className="mb-8 flex items-center justify-center gap-4">
+        <img
+          src="/images/homer.png"
+          alt="Homer"
+          className="h-16 w-16 rounded-full object-cover"
+        />
+        <div>
+          <h1 className="mb-1 font-cera text-3xl font-bold">{t("homer.title")}</h1>
+          <p className="text-muted-foreground">{t("homer.subtitle")}</p>
+        </div>
       </div>
 
       {/* Sites Grid */}
@@ -120,7 +127,7 @@ export default function RalphPage({ params }) {
                   {site.featured && (
                     <Badge variant="secondary" className="gap-1">
                       <FaStar size={10} />
-                      {t("ralph.featured")}
+                      {t("homer.featured")}
                     </Badge>
                   )}
                 </div>
@@ -143,7 +150,7 @@ export default function RalphPage({ params }) {
                   className="block"
                 >
                   <Button variant="outline" size="sm" className="w-full gap-2">
-                    {t("ralph.visit")}
+                    {t("homer.visit")}
                     <FaArrowUpRightFromSquare size={12} />
                   </Button>
                 </a>

@@ -20,7 +20,7 @@
     "home": "홈",
     "content": "콘텐츠",
     "categories": "카테고리",
-    "ralph": "랄프",
+    "homer": "호머",
     "premium": "프리미엄",
     "login": "로그인",
     "register": "회원가입",
@@ -277,8 +277,8 @@
       "saveDraft": "임시저장"
     }
   },
-  "ralph": {
-    "title": "랄프",
+  "homer": {
+    "title": "호머",
     "subtitle": "바이브코딩에 유용한 사이트 큐레이션",
     "featured": "추천",
     "visit": "방문하기",
