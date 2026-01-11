@@ -1,7 +1,7 @@
 import ProjectCard from "@/components/sections/projects";
 import Layout from "@/components/layout/layout";
 
-import { fetchCollectionData } from "@/services/firebase";
+import { fetchCollectionData } from "@/services/supabase";
 
 export const dynamic = "force-dynamic";
 
