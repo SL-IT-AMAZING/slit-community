@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // ===== Generic Collection Functions (Legacy Support) =====
 
@@ -728,6 +729,131 @@ export const updateContentWithSocial = async (contentId, contentData) => {
 
   if (error) {
     console.error("Error updating content with social:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// ===== Crawled Content Functions =====
+
+// 크롤링 콘텐츠 조회 (Admin - service_role 사용)
+export const fetchCrawledContent = async ({
+  platform,
+  status,
+  limit = 50,
+} = {}) => {
+  const supabase = getSupabaseAdmin();
+
+  let query = supabase
+    .from("crawled_content")
+    .select("*")
+    .order("crawled_at", { ascending: false })
+    .limit(limit);
+
+  if (platform) {
+    query = query.eq("platform", platform);
+  }
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching crawled content:", error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+// 크롤링 콘텐츠 ID로 조회
+export const getCrawledById = async (id) => {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("crawled_content")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching crawled content by ID:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// 크롤링 콘텐츠 상태 업데이트
+export const updateCrawledStatus = async (ids, status) => {
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("crawled_content")
+    .update({ status })
+    .in("id", ids);
+
+  if (error) {
+    console.error("Error updating crawled status:", error);
+    throw error;
+  }
+};
+
+// 크롤링 콘텐츠 분석 결과 저장
+export const saveCrawledDigest = async (id, digestResult) => {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("crawled_content")
+    .update({
+      digest_result: digestResult,
+      status: "completed",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error saving crawled digest:", error);
+    throw error;
+  }
+};
+
+// 크롤링 콘텐츠 삭제
+export const deleteCrawledContent = async (ids) => {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("crawled_content")
+    .delete()
+    .in("id", ids);
+
+  if (error) {
+    console.error("Error deleting crawled content:", error);
+    throw error;
+  }
+};
+
+// LinkedIn 수동 업로드 (스크린샷)
+export const uploadLinkedInScreenshot = async (screenshotUrl, metadata = {}) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("crawled_content")
+    .insert({
+      platform: "linkedin",
+      platform_id: `manual_${Date.now()}`,
+      title: metadata.title || "LinkedIn Screenshot",
+      url: metadata.url || "https://linkedin.com",
+      screenshot_url: screenshotUrl,
+      status: "pending",
+      raw_data: metadata,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error uploading LinkedIn screenshot:", error);
     throw error;
   }
 

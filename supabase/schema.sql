@@ -112,6 +112,29 @@ CREATE TABLE IF NOT EXISTS metrics_history (
   metrics JSONB NOT NULL  -- { stars: 1500, forks: 200, likes: 5000, views: 10000, ... }
 );
 
+-- ===== CRAWLED CONTENT TABLE (크롤링 스테이징) =====
+CREATE TABLE IF NOT EXISTS crawled_content (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  platform TEXT NOT NULL CHECK (platform IN ('youtube', 'reddit', 'x', 'linkedin', 'threads', 'github', 'trendshift')),
+  platform_id TEXT NOT NULL,
+  title TEXT,
+  description TEXT,
+  content_text TEXT,
+  url TEXT NOT NULL,
+  author_name TEXT,
+  author_url TEXT,
+  author_avatar TEXT,
+  thumbnail_url TEXT,
+  screenshot_url TEXT,
+  video_duration TEXT,
+  published_at TIMESTAMPTZ,
+  crawled_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'ignored')),
+  digest_result JSONB,
+  raw_data JSONB,
+  UNIQUE(platform, platform_id)
+);
+
 -- ===== INDEXES =====
 CREATE INDEX IF NOT EXISTS idx_content_slug ON content(slug);
 CREATE INDEX IF NOT EXISTS idx_content_type ON content(type);
@@ -127,6 +150,10 @@ CREATE INDEX IF NOT EXISTS idx_content_social_metadata ON content USING GIN (soc
 CREATE INDEX IF NOT EXISTS idx_content_platform_id ON content(platform_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_history_content ON metrics_history(content_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_history_time ON metrics_history(recorded_at DESC);
+-- Crawled Content indexes
+CREATE INDEX IF NOT EXISTS idx_crawled_platform ON crawled_content(platform);
+CREATE INDEX IF NOT EXISTS idx_crawled_status ON crawled_content(status);
+CREATE INDEX IF NOT EXISTS idx_crawled_at ON crawled_content(crawled_at DESC);
 
 -- ===== ROW LEVEL SECURITY (RLS) =====
 
@@ -138,6 +165,7 @@ ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE metrics_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crawled_content ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 CREATE POLICY "Users can view own profile" ON users
@@ -188,6 +216,20 @@ CREATE POLICY "Admins can manage metrics history" ON metrics_history
   FOR ALL USING (
     EXISTS (SELECT 1 FROM users WHERE id::text = auth.uid()::text AND role = 'admin')
   );
+
+-- Crawled Content (admin only)
+CREATE POLICY "Admins can view crawled content" ON crawled_content
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users WHERE id::text = auth.uid()::text AND role = 'admin')
+  );
+
+CREATE POLICY "Admins can manage crawled content" ON crawled_content
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM users WHERE id::text = auth.uid()::text AND role = 'admin')
+  );
+
+CREATE POLICY "Service role can manage crawled content" ON crawled_content
+  FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- ===== FUNCTIONS =====
 
