@@ -12,6 +12,9 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    serverComponentsExternalPackages: ["cheerio"],
+  },
 };
 
 export default withNextIntl(nextConfig);

@@ -14,6 +14,7 @@ import {
   FaChartLine,
   FaPlus,
   FaArrowLeft,
+  FaRss,
 } from "react-icons/fa6";
 
 const navItems = [
@@ -28,6 +29,12 @@ const navItems = [
     nameKo: "콘텐츠",
     href: "/admin/content",
     icon: FaNewspaper,
+  },
+  {
+    name: "Crawler",
+    nameKo: "크롤러",
+    href: "/admin/crawler",
+    icon: FaRss,
   },
   {
     name: "Users",

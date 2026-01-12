@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/layout/theme-toggle";
 import LanguageToggle from "@/components/layout/language-toggle";
 
-import { FaBars, FaXmark, FaUser, FaRightFromBracket } from "react-icons/fa6";
+import { FaBars, FaXmark, FaUser, FaRightFromBracket, FaGear } from "react-icons/fa6";
 
 const NavigationBar = () => {
   const t = useTranslations("nav");
@@ -20,6 +20,7 @@ const NavigationBar = () => {
   const navMenuRef = useRef(null);
 
   const isAuthenticated = status === "authenticated" && session?.user;
+  const isAdmin = isAuthenticated && session?.user?.role === "admin";
 
   const navLinks = [
     { name: t("home"), path: "/" },
@@ -95,6 +96,14 @@ const NavigationBar = () => {
           <div className="hidden items-center gap-2 lg:flex">
             {isAuthenticated ? (
               <>
+                {isAdmin && (
+                  <Link href="/admin">
+                    <Button variant="ghost" size="sm">
+                      <FaGear className="mr-2" size={14} />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <Link href="/profile" className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-accent">
                     {session.user.image ? (
@@ -184,6 +193,14 @@ const NavigationBar = () => {
             <div className="mt-8 flex flex-col gap-2">
               {isAuthenticated ? (
                 <>
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" className="w-full">
+                        <FaGear className="mr-2" size={14} />
+                        Admin
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
                     <Button variant="outline" className="w-full">
                       <FaUser className="mr-2" size={14} />

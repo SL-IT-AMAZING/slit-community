@@ -74,6 +74,12 @@ function mapToGitHubProps(content) {
     lastUpdated: meta.lastUpdated,
     readmeImageUrl: content.readme_image_url,
     externalUrl: content.external_url,
+    // 새로운 props (Trendshift + Star History + License)
+    trendshiftBadgeUrl: meta.trendshiftBadgeUrl,
+    trendshiftRank: meta.trendshiftRank,
+    trendshiftRepoId: meta.trendshiftRepoId,
+    licenseType: meta.license,
+    starHistoryUrl: meta.starHistoryUrl,
   };
 }
 

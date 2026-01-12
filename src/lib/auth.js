@@ -93,14 +93,9 @@ export const authOptions = {
       }
       return session;
     },
-    async jwt({ token, user, trigger }) {
-      if (user) {
-        token.role = user.role ?? "user";
-        token.isPremium = user.isPremium ?? false;
-      }
-
-      // Refresh user data from Supabase on session update
-      if (trigger === "update" && token.email) {
+    async jwt({ token, user, trigger, account }) {
+      // On initial login or session update, fetch role from database
+      if (user || trigger === "update" || (account && !token.role)) {
         try {
           const supabaseAdmin = getSupabaseAdmin();
           const { data: profile } = await supabaseAdmin
@@ -112,9 +107,14 @@ export const authOptions = {
           if (profile) {
             token.role = profile.role;
             token.isPremium = profile.is_premium;
+          } else {
+            token.role = "user";
+            token.isPremium = false;
           }
         } catch (error) {
-          console.error("Error refreshing user data:", error);
+          console.error("Error fetching user data:", error);
+          token.role = token.role ?? "user";
+          token.isPremium = token.isPremium ?? false;
         }
       }
 
