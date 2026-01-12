@@ -7,6 +7,8 @@ import {
   FaCodeBranch,
   FaCircleExclamation,
   FaEye,
+  FaScaleBalanced,
+  FaChartLine,
 } from "react-icons/fa6";
 
 import BaseSocialCard, { MetricItem, formatRelativeTime } from "./base-social-card";
@@ -53,6 +55,12 @@ export default function GitHubCard({
   externalUrl,
   metricsHistory = [],
   className,
+  // 새로운 props
+  trendshiftBadgeUrl,
+  trendshiftRank,
+  trendshiftRepoId,
+  licenseType,
+  starHistoryUrl,
 }) {
   const locale = useLocale();
   const langColor = languageColor || LANGUAGE_COLORS[language] || "#586069";
@@ -97,6 +105,46 @@ export default function GitHubCard({
         </div>
       )}
 
+      {/* Trendshift Badge Graph */}
+      {trendshiftBadgeUrl && (
+        <div className="mt-3 overflow-hidden rounded-base border-2 border-border bg-white">
+          <a
+            href={
+              trendshiftRepoId
+                ? `https://trendshift.io/repositories/${trendshiftRepoId}`
+                : `https://trendshift.io`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={trendshiftBadgeUrl}
+              alt="Trendshift Trending Badge"
+              className="h-auto w-full"
+              loading="lazy"
+            />
+          </a>
+        </div>
+      )}
+
+      {/* Star History Graph */}
+      {starHistoryUrl && (
+        <div className="mt-3 overflow-hidden rounded-base border-2 border-border bg-white">
+          <a
+            href={`https://star-history.com/#${repoOwner}/${repoName}&Date`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={starHistoryUrl}
+              alt="Star History"
+              className="h-auto w-full"
+              loading="lazy"
+            />
+          </a>
+        </div>
+      )}
+
       {/* Topics */}
       {topics && topics.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
@@ -133,7 +181,23 @@ export default function GitHubCard({
         {issues !== undefined && (
           <MetricItem icon={FaCircleExclamation} value={issues} label="Issues" />
         )}
+        {trendshiftRank && (
+          <span className="flex items-center gap-1 text-purple-500">
+            <FaChartLine size={14} />
+            <span className="font-medium">#{trendshiftRank}</span>
+          </span>
+        )}
       </div>
+
+      {/* License Badge */}
+      {licenseType && (
+        <div className="mt-2">
+          <Badge variant="outline" className="gap-1 text-xs">
+            <FaScaleBalanced size={10} />
+            {licenseType}
+          </Badge>
+        </div>
+      )}
 
       {/* Star Trend Graph */}
       {metricsHistory && metricsHistory.length > 1 && (
