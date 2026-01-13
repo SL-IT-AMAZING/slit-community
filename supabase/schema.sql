@@ -124,12 +124,16 @@ CREATE TABLE IF NOT EXISTS crawled_content (
   author_name TEXT,
   author_url TEXT,
   author_avatar TEXT,
+  author_title TEXT,
   thumbnail_url TEXT,
   screenshot_url TEXT,
   video_duration TEXT,
+  media_urls JSONB DEFAULT '[]',
+  translated_title TEXT,
+  translated_content TEXT,
   published_at TIMESTAMPTZ,
   crawled_at TIMESTAMPTZ DEFAULT NOW(),
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'ignored')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'ignored', 'translated', 'queued')),
   digest_result JSONB,
   raw_data JSONB,
   UNIQUE(platform, platform_id)
@@ -154,6 +158,8 @@ CREATE INDEX IF NOT EXISTS idx_metrics_history_time ON metrics_history(recorded_
 CREATE INDEX IF NOT EXISTS idx_crawled_platform ON crawled_content(platform);
 CREATE INDEX IF NOT EXISTS idx_crawled_status ON crawled_content(status);
 CREATE INDEX IF NOT EXISTS idx_crawled_at ON crawled_content(crawled_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crawled_content_queued ON crawled_content(status) WHERE status = 'queued';
+CREATE INDEX IF NOT EXISTS idx_crawled_content_translated ON crawled_content(status) WHERE status = 'translated';
 
 -- ===== ROW LEVEL SECURITY (RLS) =====
 

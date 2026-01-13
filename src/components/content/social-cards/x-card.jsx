@@ -9,6 +9,7 @@ import BaseSocialCard, {
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
+import TranslateButton from "../translate-button";
 import { cn } from "@/lib/utils";
 
 export default function XCard({
@@ -24,6 +25,8 @@ export default function XCard({
   mediaUrls = [],
   externalUrl,
   metricsHistory = [],
+  contentId,
+  translatedContent,
   className,
 }) {
   const locale = useLocale();
@@ -55,6 +58,17 @@ export default function XCard({
       <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
         {content}
       </p>
+
+      {/* Translate Button */}
+      {content && (
+        <TranslateButton
+          text={content}
+          translatedText={translatedContent}
+          contentId={contentId}
+          field="content"
+          className="mt-2"
+        />
+      )}
 
       {/* Media Grid */}
       {mediaUrls && mediaUrls.length > 0 && (
