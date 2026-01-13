@@ -1,5 +1,6 @@
 import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
 import { upsertCrawledContent, logCrawl } from "./index.js";
+import { translateContent } from "./translate.js";
 
 const FEED_URL = "https://x.com/home"; // Following 탭
 
@@ -72,12 +73,16 @@ export async function crawlX({ limit = 20 } = {}) {
         logCrawl("x", `Failed to fetch details for ${tweetId}: ${err.message}`);
       }
 
+      // 본문 번역
+      const translatedContent = await translateContent(postDetails.content || link.text);
+
       items.push({
         platform: "x",
         platform_id: tweetId,
         title: postDetails.content?.slice(0, 200) || link.text?.slice(0, 200) || `Tweet ${tweetId}`,
         description: postDetails.content?.slice(0, 500) || link.text?.slice(0, 500) || null,
         content_text: postDetails.content || link.text || null,
+        translated_content: translatedContent,
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://x.com/${username}` : null,

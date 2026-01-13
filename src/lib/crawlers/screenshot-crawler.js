@@ -232,20 +232,73 @@ async function extractXPostDetails(page) {
       (el) => el.innerText || ""
     ).catch(() => "");
 
-    // 수치 추출 (좋아요, 리트윗, 답글, 조회수)
-    const metrics = await page.evaluate(() => {
-      const result = { likes: 0, retweets: 0, replies: 0, quotes: 0, views: 0 };
+    // 프로필 정보, 시간, 미디어, 메트릭 추출
+    const postData = await page.evaluate(() => {
+      const result = {
+        authorAvatar: null,
+        authorName: null,
+        authorHandle: null,
+        publishedAt: null,
+        mediaUrls: [],
+        metrics: { likes: 0, retweets: 0, replies: 0, quotes: 0, views: 0 },
+      };
 
-      // 방법 1: aria-label에서 추출
       const article = document.querySelector('article[data-testid="tweet"]');
       if (!article) return result;
+
+      // 프로필 사진 추출
+      const avatarImg = article.querySelector('img[data-testid="Tweet-User-Avatar"]') ||
+                        article.querySelector('div[data-testid="Tweet-User-Avatar"] img');
+      if (avatarImg) {
+        result.authorAvatar = avatarImg.src;
+      }
+
+      // 작성자 이름과 핸들 추출
+      const userNameEl = article.querySelector('div[data-testid="User-Name"]');
+      if (userNameEl) {
+        const spans = userNameEl.querySelectorAll('span');
+        for (const span of spans) {
+          const text = span.innerText?.trim();
+          if (text && text.startsWith('@')) {
+            result.authorHandle = text;
+          } else if (text && text.length > 0 && !text.includes('·') && !result.authorName) {
+            result.authorName = text;
+          }
+        }
+      }
+
+      // 게시 시간 추출
+      const timeEl = article.querySelector('time[datetime]');
+      if (timeEl) {
+        result.publishedAt = timeEl.getAttribute('datetime');
+      }
+
+      // 미디어 URL 추출 (이미지, 비디오)
+      const mediaImages = article.querySelectorAll('div[data-testid="tweetPhoto"] img');
+      mediaImages.forEach((img) => {
+        const src = img.src;
+        if (src && !src.includes('profile_images') && !src.includes('emoji')) {
+          // 고화질 이미지로 변환
+          const highQualitySrc = src.replace(/&name=\w+/, '&name=large');
+          result.mediaUrls.push(highQualitySrc);
+        }
+      });
+
+      // 비디오 포스터 이미지 추출
+      const videoPosters = article.querySelectorAll('video[poster]');
+      videoPosters.forEach((video) => {
+        const poster = video.getAttribute('poster');
+        if (poster) {
+          result.mediaUrls.push(poster);
+        }
+      });
 
       // 좋아요 버튼
       const likeBtn = article.querySelector('[data-testid="like"]');
       if (likeBtn) {
         const likeText = likeBtn.getAttribute("aria-label") || "";
         const likeMatch = likeText.match(/([\d,]+)\s*(likes?|좋아요)/i);
-        if (likeMatch) result.likes = parseInt(likeMatch[1].replace(/,/g, ""), 10);
+        if (likeMatch) result.metrics.likes = parseInt(likeMatch[1].replace(/,/g, ""), 10);
       }
 
       // 리트윗 버튼
@@ -253,7 +306,7 @@ async function extractXPostDetails(page) {
       if (retweetBtn) {
         const rtText = retweetBtn.getAttribute("aria-label") || "";
         const rtMatch = rtText.match(/([\d,]+)\s*(retweets?|리트윗)/i);
-        if (rtMatch) result.retweets = parseInt(rtMatch[1].replace(/,/g, ""), 10);
+        if (rtMatch) result.metrics.retweets = parseInt(rtMatch[1].replace(/,/g, ""), 10);
       }
 
       // 답글 버튼
@@ -261,7 +314,7 @@ async function extractXPostDetails(page) {
       if (replyBtn) {
         const replyText = replyBtn.getAttribute("aria-label") || "";
         const replyMatch = replyText.match(/([\d,]+)\s*(replies?|답글)/i);
-        if (replyMatch) result.replies = parseInt(replyMatch[1].replace(/,/g, ""), 10);
+        if (replyMatch) result.metrics.replies = parseInt(replyMatch[1].replace(/,/g, ""), 10);
       }
 
       // 조회수 (analytics link에서)
@@ -273,14 +326,22 @@ async function extractXPostDetails(page) {
           let views = parseFloat(viewsMatch[1].replace(/,/g, ""));
           if (viewsMatch[2]?.toLowerCase() === "k") views *= 1000;
           if (viewsMatch[2]?.toLowerCase() === "m") views *= 1000000;
-          result.views = Math.round(views);
+          result.metrics.views = Math.round(views);
         }
       }
 
       return result;
     });
 
-    return { content, metrics };
+    return {
+      content,
+      authorAvatar: postData.authorAvatar,
+      authorName: postData.authorName,
+      authorHandle: postData.authorHandle,
+      publishedAt: postData.publishedAt,
+      mediaUrls: postData.mediaUrls,
+      metrics: postData.metrics,
+    };
   } catch (error) {
     return { content: "", metrics: {}, error: error.message };
   }
@@ -291,32 +352,93 @@ async function extractXPostDetails(page) {
  */
 async function extractThreadsPostDetails(page) {
   try {
-    // 포스트 본문 추출
-    const content = await page.evaluate(() => {
-      // Threads의 포스트 텍스트 셀렉터 (동적으로 변할 수 있음)
-      const selectors = [
+    // 종합 데이터 추출
+    const postData = await page.evaluate(() => {
+      const result = {
+        content: "",
+        authorAvatar: null,
+        authorName: null,
+        authorHandle: null,
+        publishedAt: null,
+        mediaUrls: [],
+        metrics: { likes: 0, replies: 0, reposts: 0, shares: 0 },
+      };
+
+      // 포스트 본문 추출
+      const textSelectors = [
         '[data-pressable-container="true"] span',
         'div[dir="auto"] span',
         'article span',
       ];
 
-      for (const selector of selectors) {
+      for (const selector of textSelectors) {
         const els = document.querySelectorAll(selector);
         for (const el of els) {
           const text = el.innerText?.trim();
           if (text && text.length > 10 && !text.includes("Follow") && !text.includes("팔로우")) {
-            return text;
+            result.content = text;
+            break;
           }
         }
+        if (result.content) break;
       }
-      return "";
-    });
 
-    // 수치 추출 (좋아요, 답글, 리포스트)
-    const metrics = await page.evaluate(() => {
-      const result = { likes: 0, replies: 0, reposts: 0 };
+      // 프로필 사진 추출
+      const avatarSelectors = [
+        'img[data-testid="user-avatar"]',
+        'a[role="link"] img[alt]',
+        'div[role="button"] img[alt]',
+      ];
+      for (const selector of avatarSelectors) {
+        const img = document.querySelector(selector);
+        if (img && img.src && img.src.includes('cdninstagram.com')) {
+          result.authorAvatar = img.src;
+          break;
+        }
+      }
 
-      // Threads 수치는 보통 span이나 특정 버튼 안에 있음
+      // 작성자 이름/핸들 추출
+      const usernameEl = document.querySelector('a[role="link"] span[dir="auto"]');
+      if (usernameEl) {
+        const text = usernameEl.innerText?.trim();
+        if (text && !text.includes(' ')) {
+          result.authorHandle = text.startsWith('@') ? text : `@${text}`;
+          result.authorName = text.replace('@', '');
+        }
+      }
+
+      // 게시 시간 추출
+      const timeEl = document.querySelector('time[datetime]');
+      if (timeEl) {
+        result.publishedAt = timeEl.getAttribute('datetime');
+      } else {
+        // 상대 시간에서 추출 시도
+        const timeTextEl = document.querySelector('[class*="time"]') ||
+                          document.querySelector('span:contains("h"), span:contains("m"), span:contains("d")');
+        if (timeTextEl) {
+          // 상대 시간은 그대로 저장 (클라이언트에서 처리)
+        }
+      }
+
+      // 미디어 URL 추출
+      const mediaImages = document.querySelectorAll('img[style*="object-fit"]');
+      mediaImages.forEach((img) => {
+        const src = img.src;
+        if (src && src.includes('cdninstagram.com') && !src.includes('150x150')) {
+          result.mediaUrls.push(src);
+        }
+      });
+
+      // 비디오 추출
+      const videos = document.querySelectorAll('video[src], video source[src]');
+      videos.forEach((video) => {
+        const src = video.src || video.getAttribute('src');
+        if (src) {
+          result.mediaUrls.push(src);
+        }
+      });
+
+      // 메트릭 추출
       const text = document.body.innerText || "";
 
       // 좋아요 패턴
@@ -327,7 +449,7 @@ async function extractThreadsPostDetails(page) {
       for (const pattern of likePatterns) {
         const match = text.match(pattern);
         if (match) {
-          result.likes = parseInt(match[1].replace(/,/g, ""), 10);
+          result.metrics.likes = parseInt(match[1].replace(/,/g, ""), 10);
           break;
         }
       }
@@ -340,7 +462,7 @@ async function extractThreadsPostDetails(page) {
       for (const pattern of replyPatterns) {
         const match = text.match(pattern);
         if (match) {
-          result.replies = parseInt(match[1].replace(/,/g, ""), 10);
+          result.metrics.replies = parseInt(match[1].replace(/,/g, ""), 10);
           break;
         }
       }
@@ -353,7 +475,20 @@ async function extractThreadsPostDetails(page) {
       for (const pattern of repostPatterns) {
         const match = text.match(pattern);
         if (match) {
-          result.reposts = parseInt(match[1].replace(/,/g, ""), 10);
+          result.metrics.reposts = parseInt(match[1].replace(/,/g, ""), 10);
+          break;
+        }
+      }
+
+      // 보내기/공유 패턴
+      const sharePatterns = [
+        /(\d+(?:,\d+)*)\s*(?:shares?|보내기|공유)/i,
+        /보내기\s*(\d+(?:,\d+)*)/i,
+      ];
+      for (const pattern of sharePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          result.metrics.shares = parseInt(match[1].replace(/,/g, ""), 10);
           break;
         }
       }
@@ -361,7 +496,15 @@ async function extractThreadsPostDetails(page) {
       return result;
     });
 
-    return { content, metrics };
+    return {
+      content: postData.content,
+      authorAvatar: postData.authorAvatar,
+      authorName: postData.authorName,
+      authorHandle: postData.authorHandle,
+      publishedAt: postData.publishedAt,
+      mediaUrls: postData.mediaUrls,
+      metrics: postData.metrics,
+    };
   } catch (error) {
     return { content: "", metrics: {}, error: error.message };
   }

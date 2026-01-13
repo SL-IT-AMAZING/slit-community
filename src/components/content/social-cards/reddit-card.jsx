@@ -15,6 +15,7 @@ import BaseSocialCard, {
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
+import TranslateButton from "../translate-button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export default function RedditCard({
   content,
   subreddit,
   authorName,
+  authorAvatar,
   upvotes,
   downvotes,
   commentCount,
@@ -31,6 +33,9 @@ export default function RedditCard({
   mediaUrl,
   externalUrl,
   metricsHistory = [],
+  contentId,
+  translatedTitle,
+  translatedContent,
   className,
 }) {
   const locale = useLocale();
@@ -44,25 +49,57 @@ export default function RedditCard({
       externalUrl={externalUrl}
       className={className}
     >
-      {/* Subreddit */}
+      {/* Subreddit & Author */}
       <div className="flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white">
           <FaReddit size={14} />
         </div>
         <span className="text-sm font-semibold">r/{subreddit}</span>
         <span className="text-sm text-muted-foreground">
-          {locale === "ko" ? "에 게시됨" : "Posted by"} u/{authorName}
+          {locale === "ko" ? "에 게시됨" : "Posted by"}
         </span>
+        <div className="flex items-center gap-1">
+          {authorAvatar ? (
+            <img
+              src={authorAvatar}
+              alt={authorName}
+              className="h-5 w-5 rounded-full object-cover"
+            />
+          ) : null}
+          <span className="text-sm text-muted-foreground">u/{authorName}</span>
+        </div>
       </div>
 
       {/* Title */}
       <h3 className="mt-2 font-semibold leading-tight">{title}</h3>
+
+      {/* Title Translate Button */}
+      {title && (
+        <TranslateButton
+          text={title}
+          translatedText={translatedTitle}
+          contentId={contentId}
+          field="title"
+          className="mt-1"
+        />
+      )}
 
       {/* Content */}
       {content && (
         <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
           {content}
         </p>
+      )}
+
+      {/* Content Translate Button */}
+      {content && (
+        <TranslateButton
+          text={content}
+          translatedText={translatedContent}
+          contentId={contentId}
+          field="content"
+          className="mt-1"
+        />
       )}
 
       {/* Media */}

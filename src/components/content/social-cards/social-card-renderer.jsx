@@ -43,7 +43,7 @@ function mapToXProps(content) {
   const author = content.author_info || {};
 
   return {
-    content: content.description || content.body,
+    content: content.body_en || content.description_en || content.body,
     authorName: author.name,
     authorHandle: meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
@@ -54,6 +54,8 @@ function mapToXProps(content) {
     publishedAt: content.published_at,
     mediaUrls: meta.mediaUrls || [],
     externalUrl: content.external_url,
+    contentId: content.id,
+    translatedContent: meta.translatedContent || content.body,
   };
 }
 
@@ -88,10 +90,11 @@ function mapToRedditProps(content) {
   const author = content.author_info || {};
 
   return {
-    title: content.title,
-    content: content.description || content.body,
+    title: content.title_en || content.title,
+    content: content.body_en || content.description_en || content.body,
     subreddit: meta.subreddit,
     authorName: meta.authorName || author.name,
+    authorAvatar: author.avatar,
     upvotes: meta.upvotes,
     downvotes: meta.downvotes,
     commentCount: meta.commentCount,
@@ -99,6 +102,9 @@ function mapToRedditProps(content) {
     publishedAt: content.published_at,
     mediaUrl: content.thumbnail_url,
     externalUrl: content.external_url,
+    contentId: content.id,
+    translatedTitle: meta.translatedTitle || content.title,
+    translatedContent: meta.translatedContent || content.body,
   };
 }
 
@@ -125,7 +131,7 @@ function mapToThreadsProps(content) {
   const author = content.author_info || {};
 
   return {
-    content: content.description || content.body,
+    content: content.body_en || content.description_en || content.body,
     authorName: author.name,
     authorHandle: meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
@@ -136,6 +142,8 @@ function mapToThreadsProps(content) {
     publishedAt: content.published_at,
     mediaUrls: meta.mediaUrls || [],
     externalUrl: content.external_url,
+    contentId: content.id,
+    translatedContent: meta.translatedContent || content.body,
   };
 }
 

@@ -1,5 +1,6 @@
 import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
 import { upsertCrawledContent, logCrawl } from "./index.js";
+import { translateContent } from "./translate.js";
 
 const FEED_URL = "https://www.threads.com/";
 
@@ -71,12 +72,16 @@ export async function crawlThreads({ limit = 20 } = {}) {
         logCrawl("threads", `Failed to fetch details for ${postId}: ${err.message}`);
       }
 
+      // 본문 번역
+      const translatedContent = await translateContent(postDetails.content || link.text);
+
       items.push({
         platform: "threads",
         platform_id: postId,
         title: postDetails.content?.slice(0, 200) || link.text?.slice(0, 200) || `Thread ${postId}`,
         description: postDetails.content?.slice(0, 500) || link.text?.slice(0, 500) || null,
         content_text: postDetails.content || link.text || null,
+        translated_content: translatedContent,
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://www.threads.net/@${username}` : null,

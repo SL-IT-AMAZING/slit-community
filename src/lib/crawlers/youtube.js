@@ -1,5 +1,46 @@
 import { google } from "googleapis";
+import Anthropic from "@anthropic-ai/sdk";
 import { upsertCrawledContent, getExistingPlatformIds, logCrawl } from "./index.js";
+
+/**
+ * 제목을 한국어로 번역
+ */
+async function translateTitle(title) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    logCrawl("youtube", "ANTHROPIC_API_KEY not configured, skipping translation");
+    return null;
+  }
+
+  // 이미 한국어인지 체크 (간단한 휴리스틱)
+  const hasKorean = /[\uAC00-\uD7AF]/.test(title);
+  if (hasKorean && title.length < 50) {
+    // 한국어가 포함되어 있고 짧으면 번역 불필요
+    return null;
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey });
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 256,
+      messages: [
+        {
+          role: "user",
+          content: `다음 YouTube 영상 제목을 자연스러운 한국어로 번역해주세요. 번역 결과만 출력해주세요.
+
+제목: ${title}`,
+        },
+      ],
+    });
+
+    return response.content[0].text.trim();
+  } catch (error) {
+    logCrawl("youtube", `Translation error: ${error.message}`);
+    return null;
+  }
+}
 
 /**
  * YouTube 구독 피드 크롤러
@@ -79,27 +120,38 @@ export async function crawlYouTube({ limit } = {}) {
     // 4. limit 적용
     const videosToSave = limit ? newVideos.slice(0, limit) : newVideos;
 
-    // 5. 데이터 변환 및 저장
-    const items = videosToSave.map((video) => ({
-      platform: "youtube",
-      platform_id: video.id,
-      title: video.snippet.title,
-      description: video.snippet.description?.slice(0, 500) || null,
-      url: `https://www.youtube.com/watch?v=${video.id}`,
-      author_name: video.channelTitle || video.snippet.channelTitle,
-      author_url: `https://www.youtube.com/channel/${video.snippet.channelId}`,
-      thumbnail_url: getBestThumbnail(video.snippet.thumbnails),
-      video_duration: video.contentDetails?.duration || null,
-      published_at: video.snippet.publishedAt,
-      status: "pending",
-      raw_data: {
-        viewCount: video.statistics?.viewCount,
-        likeCount: video.statistics?.likeCount,
-        commentCount: video.statistics?.commentCount,
-        tags: video.snippet.tags,
-        categoryId: video.snippet.categoryId,
-      },
-    }));
+    // 5. 데이터 변환 및 제목 번역
+    logCrawl("youtube", "Translating video titles...");
+    const items = [];
+
+    for (const video of videosToSave) {
+      const translatedTitle = await translateTitle(video.snippet.title);
+
+      items.push({
+        platform: "youtube",
+        platform_id: video.id,
+        title: video.snippet.title,
+        translated_title: translatedTitle,
+        description: video.snippet.description?.slice(0, 500) || null,
+        url: `https://www.youtube.com/watch?v=${video.id}`,
+        author_name: video.channelTitle || video.snippet.channelTitle,
+        author_url: `https://www.youtube.com/channel/${video.snippet.channelId}`,
+        thumbnail_url: getBestThumbnail(video.snippet.thumbnails),
+        video_duration: video.contentDetails?.duration || null,
+        published_at: video.snippet.publishedAt,
+        status: "pending",
+        raw_data: {
+          viewCount: video.statistics?.viewCount,
+          likeCount: video.statistics?.likeCount,
+          commentCount: video.statistics?.commentCount,
+          tags: video.snippet.tags,
+          categoryId: video.snippet.categoryId,
+        },
+      });
+
+      // Rate limiting: 200ms 대기
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
 
     const { data: savedData, error } = await upsertCrawledContent(items);
 

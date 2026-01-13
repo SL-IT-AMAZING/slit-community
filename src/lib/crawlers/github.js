@@ -1,7 +1,172 @@
 import * as cheerio from "cheerio";
+import Anthropic from "@anthropic-ai/sdk";
 import { upsertCrawledContent, logCrawl } from "./index.js";
 
 const TRENDING_URL = "https://github.com/trending";
+
+/**
+ * GitHub README에서 첫 번째 이미지 URL 추출
+ * @param {string} readmeContent - README raw content (markdown)
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @returns {string|null} First image URL or null
+ */
+function extractReadmeImage(readmeContent, owner, repo) {
+  if (!readmeContent) return null;
+
+  // Markdown 이미지: ![alt](url)
+  const mdImageMatch = readmeContent.match(/!\[.*?\]\(([^)]+)\)/);
+  if (mdImageMatch && mdImageMatch[1]) {
+    let imageUrl = mdImageMatch[1];
+    // 상대 경로를 절대 경로로 변환
+    if (!imageUrl.startsWith("http")) {
+      // ./images/logo.png → https://raw.githubusercontent.com/owner/repo/main/images/logo.png
+      imageUrl = imageUrl.replace(/^\.\//, "").replace(/^\//, "");
+      imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${imageUrl}`;
+    }
+    return imageUrl;
+  }
+
+  // HTML img 태그: <img src="url">
+  const htmlImageMatch = readmeContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (htmlImageMatch && htmlImageMatch[1]) {
+    let imageUrl = htmlImageMatch[1];
+    if (!imageUrl.startsWith("http")) {
+      imageUrl = imageUrl.replace(/^\.\//, "").replace(/^\//, "");
+      imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${imageUrl}`;
+    }
+    return imageUrl;
+  }
+
+  return null;
+}
+
+/**
+ * GitHub README 조회
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @returns {Promise<string|null>} README content or null
+ */
+async function fetchReadme(owner, repo) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/readme`,
+      {
+        headers: {
+          Accept: "application/vnd.github.raw",
+          "User-Agent": "Kiev-Crawler",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.text();
+  } catch (error) {
+    logCrawl("github", `Error fetching README for ${owner}/${repo}: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * LLM으로 레포지토리 요약 생성
+ * @param {string} repoName - Repository name (owner/repo)
+ * @param {string} description - GitHub description
+ * @param {string} readmeContent - README content
+ * @param {string} language - Primary programming language
+ * @returns {Promise<Object|null>} Summary object or null
+ */
+async function summarizeRepo(repoName, description, readmeContent, language) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    logCrawl("github", "ANTHROPIC_API_KEY not configured, skipping summary");
+    return null;
+  }
+
+  // README가 없거나 너무 짧으면 요약 생략
+  if (!readmeContent || readmeContent.length < 100) {
+    return null;
+  }
+
+  const anthropic = new Anthropic({ apiKey });
+
+  const prompt = `다음 GitHub 레포지토리를 분석하고 요약해주세요.
+
+레포지토리: ${repoName}
+설명: ${description || "(없음)"}
+언어: ${language || "(미지정)"}
+
+README (최대 4000자):
+${readmeContent.slice(0, 4000)}
+
+다음 형식으로 JSON 응답만 출력해주세요:
+{
+  "summary": "한 문장 요약 (한국어, 80자 이내)",
+  "features": ["주요 기능 1", "주요 기능 2", "주요 기능 3"],
+  "targetAudience": "주요 타겟 사용자 (한국어, 30자 이내)",
+  "beginner_description": "초보 개발자를 위한 쉬운 설명 (한국어, 150자 이내)"
+}
+
+JSON만 출력하세요.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.content[0].text;
+
+    // JSON 추출
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return null;
+  } catch (error) {
+    logCrawl("github", `Error summarizing ${repoName}: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * 레포지토리 세부 정보 보강 (README 이미지, LLM 요약)
+ * @param {Object} repo - 기본 레포 정보
+ * @returns {Promise<Object>} 보강된 레포 정보
+ */
+async function enrichRepoDetails(repo) {
+  const [owner, repoName] = repo.title.split("/");
+
+  // README 조회
+  const readmeContent = await fetchReadme(owner, repoName);
+
+  // README 이미지 추출
+  const readmeImage = extractReadmeImage(readmeContent, owner, repoName);
+
+  // LLM 요약 생성 (API 키가 있고 README가 있는 경우에만)
+  let llmSummary = null;
+  if (readmeContent && readmeContent.length > 100) {
+    llmSummary = await summarizeRepo(
+      repo.title,
+      repo.description,
+      readmeContent,
+      repo.raw_data.language
+    );
+  }
+
+  return {
+    ...repo,
+    thumbnail_url: readmeImage || repo.thumbnail_url,
+    raw_data: {
+      ...repo.raw_data,
+      readme_image: readmeImage,
+      llm_summary: llmSummary,
+    },
+  };
+}
 
 /**
  * GitHub 트렌딩 전체 크롤러 (daily, weekly, monthly 모두)
@@ -34,9 +199,10 @@ export async function crawlGithubTrendingAll({ limit = 20 } = {}) {
  * @param {Object} options
  * @param {string} options.since - 기간 (daily, weekly, monthly)
  * @param {number} options.limit - 최대 수집 개수 (기본: 25)
+ * @param {boolean} options.enrich - README 이미지/LLM 요약 추가 여부 (기본: true)
  */
-export async function crawlGithubTrending({ since = "weekly", limit = 25 } = {}) {
-  logCrawl("github", `Starting crawl for trending repos (${since})`);
+export async function crawlGithubTrending({ since = "weekly", limit = 25, enrich = true } = {}) {
+  logCrawl("github", `Starting crawl for trending repos (${since}), enrich=${enrich}`);
 
   try {
     const url = `${TRENDING_URL}?since=${since}`;
@@ -133,15 +299,29 @@ export async function crawlGithubTrending({ since = "weekly", limit = 25 } = {})
       return { success: true, count: 0 };
     }
 
+    // README 이미지 및 LLM 요약 추가 (enrich 옵션이 true인 경우)
+    let enrichedRepos = repos;
+    if (enrich) {
+      logCrawl("github", `Enriching ${repos.length} repos with README images and LLM summaries...`);
+      enrichedRepos = [];
+      for (const repo of repos) {
+        const enriched = await enrichRepoDetails(repo);
+        enrichedRepos.push(enriched);
+        // Rate limiting: GitHub API 제한 방지
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      logCrawl("github", `Enrichment complete`);
+    }
+
     // DB에 저장
-    const { data: savedData, error } = await upsertCrawledContent(repos);
+    const { data: savedData, error } = await upsertCrawledContent(enrichedRepos);
 
     if (error) {
       throw error;
     }
 
-    logCrawl("github", `Successfully saved ${savedData?.length || repos.length} repos`);
-    return { success: true, count: savedData?.length || repos.length };
+    logCrawl("github", `Successfully saved ${savedData?.length || enrichedRepos.length} repos`);
+    return { success: true, count: savedData?.length || enrichedRepos.length };
   } catch (error) {
     logCrawl("github", `Error: ${error.message}`);
     return { success: false, error: error.message };
