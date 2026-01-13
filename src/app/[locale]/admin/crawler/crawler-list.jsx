@@ -66,6 +66,7 @@ const PLATFORMS = [
 const STATUSES = [
   { id: "all", name: "All", nameKo: "전체" },
   { id: "pending", name: "Pending", nameKo: "대기중" },
+  { id: "queued", name: "Queued", nameKo: "게시 대기" },
   { id: "processing", name: "Processing", nameKo: "처리중" },
   { id: "completed", name: "Completed", nameKo: "완료" },
   { id: "ignored", name: "Ignored", nameKo: "무시됨" },
@@ -114,6 +115,7 @@ function PlatformIcon({ platform, size = 16 }) {
 function StatusBadge({ status, locale }) {
   const statusConfig = {
     pending: { color: "bg-yellow-500/10 text-yellow-500", label: locale === "ko" ? "대기중" : "Pending" },
+    queued: { color: "bg-purple-500/10 text-purple-500", label: locale === "ko" ? "게시 대기" : "Queued" },
     processing: { color: "bg-blue-500/10 text-blue-500", label: locale === "ko" ? "처리중" : "Processing" },
     completed: { color: "bg-green-500/10 text-green-500", label: locale === "ko" ? "완료" : "Completed" },
     ignored: { color: "bg-gray-500/10 text-gray-500", label: locale === "ko" ? "무시됨" : "Ignored" },
@@ -709,20 +711,19 @@ export default function CrawlerList({ initialContent, locale }) {
     }
   };
 
-  // Run digest
+  // Run digest (for queued YouTube items)
   const handleDigest = async () => {
-    if (!hasPendingSelected) return;
+    const queuedItems = selectedItems.filter((item) => item.status === "queued");
+    if (queuedItems.length === 0) return;
 
     setIsProcessing(true);
     try {
-      const pendingIds = selectedItems
-        .filter((item) => item.status === "pending")
-        .map((item) => item.id);
+      const queuedIds = queuedItems.map((item) => item.id);
 
       const response = await fetch("/api/crawler/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: pendingIds }),
+        body: JSON.stringify({ ids: queuedIds }),
       });
 
       if (!response.ok) {
@@ -806,6 +807,54 @@ export default function CrawlerList({ initialContent, locale }) {
     } finally {
       setIsProcessing(false);
       setSelectedIds(new Set());
+    }
+  };
+
+  // Queue for YouTube processing
+  const handleQueue = async () => {
+    if (selectedIds.size === 0) return;
+
+    // Only queue YouTube pending items
+    const youtubeItems = selectedItems.filter(
+      (item) => item.platform === "youtube" && item.status === "pending"
+    );
+
+    if (youtubeItems.length === 0) {
+      alert(locale === "ko"
+        ? "대기중인 YouTube 콘텐츠가 선택되지 않았습니다."
+        : "No pending YouTube content selected.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const supabase = createClient();
+      const youtubeIds = youtubeItems.map((item) => item.id);
+
+      const { error } = await supabase
+        .from("crawled_content")
+        .update({ status: "queued" })
+        .in("id", youtubeIds);
+
+      if (error) throw error;
+
+      setContent((prev) =>
+        prev.map((item) =>
+          youtubeIds.includes(item.id) ? { ...item, status: "queued" } : item
+        )
+      );
+
+      const message = locale === "ko"
+        ? `${youtubeIds.length}개의 YouTube 콘텐츠가 게시 대기 상태로 변경되었습니다.`
+        : `${youtubeIds.length} YouTube items queued for processing.`;
+      alert(message);
+
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error("Error queueing:", error);
+      alert(locale === "ko" ? `대기열 추가 실패: ${error.message}` : `Queue failed: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -905,8 +954,21 @@ export default function CrawlerList({ initialContent, locale }) {
               : `${selectedIds.size} selected`}
           </span>
           <div className="flex gap-2">
-            {/* 분석 실행: YouTube 탭에서만 표시 */}
+            {/* 게시 대기: YouTube pending 콘텐츠에서만 표시 */}
             {selectedPlatform === "youtube" && hasPendingSelected && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleQueue}
+                disabled={isProcessing}
+                className="gap-2"
+              >
+                <FaClock size={12} />
+                {locale === "ko" ? "게시 대기" : "Queue"}
+              </Button>
+            )}
+            {/* 분석 실행: YouTube queued 콘텐츠에서만 표시 */}
+            {selectedPlatform === "youtube" && selectedItems.some((item) => item.status === "queued") && (
               <Button
                 size="sm"
                 onClick={handleDigest}
