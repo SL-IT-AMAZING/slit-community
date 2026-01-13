@@ -1,17 +1,11 @@
 import { google } from "googleapis";
-import Anthropic from "@anthropic-ai/sdk";
 import { upsertCrawledContent, getExistingPlatformIds, logCrawl } from "./index.js";
+import { translateToKorean } from "./llm.js";
 
 /**
  * 제목을 한국어로 번역
  */
 async function translateTitle(title) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    logCrawl("youtube", "ANTHROPIC_API_KEY not configured, skipping translation");
-    return null;
-  }
-
   // 이미 한국어인지 체크 (간단한 휴리스틱)
   const hasKorean = /[\uAC00-\uD7AF]/.test(title);
   if (hasKorean && title.length < 50) {
@@ -19,27 +13,7 @@ async function translateTitle(title) {
     return null;
   }
 
-  try {
-    const anthropic = new Anthropic({ apiKey });
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 256,
-      messages: [
-        {
-          role: "user",
-          content: `다음 YouTube 영상 제목을 자연스러운 한국어로 번역해주세요. 번역 결과만 출력해주세요.
-
-제목: ${title}`,
-        },
-      ],
-    });
-
-    return response.content[0].text.trim();
-  } catch (error) {
-    logCrawl("youtube", `Translation error: ${error.message}`);
-    return null;
-  }
+  return await translateToKorean(title);
 }
 
 /**

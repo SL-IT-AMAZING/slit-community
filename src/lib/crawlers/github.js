@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import Anthropic from "@anthropic-ai/sdk";
 import { upsertCrawledContent, logCrawl } from "./index.js";
+import { summarizeRepo } from "./llm.js";
 
 const TRENDING_URL = "https://github.com/trending";
 
@@ -70,67 +70,7 @@ async function fetchReadme(owner, repo) {
   }
 }
 
-/**
- * LLM으로 레포지토리 요약 생성
- * @param {string} repoName - Repository name (owner/repo)
- * @param {string} description - GitHub description
- * @param {string} readmeContent - README content
- * @param {string} language - Primary programming language
- * @returns {Promise<Object|null>} Summary object or null
- */
-async function summarizeRepo(repoName, description, readmeContent, language) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    logCrawl("github", "ANTHROPIC_API_KEY not configured, skipping summary");
-    return null;
-  }
-
-  // README가 없거나 너무 짧으면 요약 생략
-  if (!readmeContent || readmeContent.length < 100) {
-    return null;
-  }
-
-  const anthropic = new Anthropic({ apiKey });
-
-  const prompt = `다음 GitHub 레포지토리를 분석하고 요약해주세요.
-
-레포지토리: ${repoName}
-설명: ${description || "(없음)"}
-언어: ${language || "(미지정)"}
-
-README (최대 4000자):
-${readmeContent.slice(0, 4000)}
-
-다음 형식으로 JSON 응답만 출력해주세요:
-{
-  "summary": "한 문장 요약 (한국어, 80자 이내)",
-  "features": ["주요 기능 1", "주요 기능 2", "주요 기능 3"],
-  "targetAudience": "주요 타겟 사용자 (한국어, 30자 이내)",
-  "beginner_description": "초보 개발자를 위한 쉬운 설명 (한국어, 150자 이내)"
-}
-
-JSON만 출력하세요.`;
-
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.content[0].text;
-
-    // JSON 추출
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    return null;
-  } catch (error) {
-    logCrawl("github", `Error summarizing ${repoName}: ${error.message}`);
-    return null;
-  }
-}
+// summarizeRepo는 llm.js에서 import
 
 /**
  * 레포지토리 세부 정보 보강 (README 이미지, LLM 요약)

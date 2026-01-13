@@ -1,9 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { upsertCrawledContent, logCrawl } from "./index.js";
+import { analyzeImage } from "./llm.js";
 
 /**
  * LinkedIn 스크린샷 Vision 분석 크롤러
- * 스크린샷 이미지를 업로드하면 Claude Vision API로 분석하여 콘텐츠 추출
+ * 스크린샷 이미지를 업로드하면 Gemini Vision API로 분석하여 콘텐츠 추출
  */
 
 const VISION_PROMPT = `이 LinkedIn 포스트 스크린샷을 분석해주세요. 다음 정보를 JSON 형식으로 추출해주세요:
@@ -37,38 +37,12 @@ const VISION_PROMPT = `이 LinkedIn 포스트 스크린샷을 분석해주세요
 export async function analyzeLinkedInScreenshot(imageUrl, postUrl = null) {
   logCrawl("linkedin", `Analyzing screenshot: ${imageUrl.substring(0, 50)}...`);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
-  }
-
-  const anthropic = new Anthropic({ apiKey });
-
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "url",
-                url: imageUrl,
-              },
-            },
-            {
-              type: "text",
-              text: VISION_PROMPT,
-            },
-          ],
-        },
-      ],
-    });
+    const resultText = await analyzeImage(imageUrl, VISION_PROMPT);
 
-    const resultText = response.content[0].text;
+    if (!resultText) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
 
     // JSON 파싱 시도
     let parsedResult;
