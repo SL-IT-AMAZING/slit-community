@@ -129,17 +129,17 @@ async function autoScroll(page) {
   await page.evaluate(async () => {
     await new Promise((resolve) => {
       let totalHeight = 0;
-      const distance = 300;
+      const distance = 500;
       const timer = setInterval(() => {
         window.scrollBy(0, distance);
         totalHeight += distance;
 
-        if (totalHeight >= 3000) {
-          // 최대 3000px 스크롤
+        if (totalHeight >= 10000) {
+          // 최대 10000px 스크롤 (더 많은 포스트 로드)
           clearInterval(timer);
           resolve();
         }
-      }, 200);
+      }, 150);
     });
   });
 }
