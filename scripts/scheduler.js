@@ -18,6 +18,13 @@
  * - YOUTUBE_REFRESH_TOKEN
  */
 
+import { config } from "dotenv";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, "..", ".env.local") });
+
 import { crawlYouTube } from "../src/lib/crawlers/youtube.js";
 import { crawlReddit } from "../src/lib/crawlers/reddit.js";
 import { crawlX } from "../src/lib/crawlers/x.js";

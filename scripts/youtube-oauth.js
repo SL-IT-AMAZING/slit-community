@@ -10,9 +10,14 @@
  * 6. 출력된 refresh_token을 .env.local에 저장
  */
 
-import "dotenv/config";
+import { config } from "dotenv";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import { google } from "googleapis";
 import * as readline from "readline";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, "..", ".env.local") });
 
 const SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"];
 
