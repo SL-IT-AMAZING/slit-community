@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale } from "next-intl";
-import { FaAt, FaHeart, FaComment, FaRetweet } from "react-icons/fa6";
+import { FaAt, FaHeart, FaComment, FaRetweet, FaShareFromSquare } from "react-icons/fa6";
 
 import BaseSocialCard, {
   AuthorInfo,
@@ -9,6 +9,7 @@ import BaseSocialCard, {
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
+import TranslateButton from "../translate-button";
 import { cn } from "@/lib/utils";
 
 // Threads 아이콘 (react-icons에 없는 경우 커스텀)
@@ -35,10 +36,13 @@ export default function ThreadsCard({
   likeCount,
   replyCount,
   repostCount,
+  shareCount,
   publishedAt,
   mediaUrls = [],
   externalUrl,
   metricsHistory = [],
+  contentId,
+  translatedContent,
   className,
 }) {
   const locale = useLocale();
@@ -69,6 +73,17 @@ export default function ThreadsCard({
       <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
         {content}
       </p>
+
+      {/* Translate Button */}
+      {content && (
+        <TranslateButton
+          text={content}
+          translatedText={translatedContent}
+          contentId={contentId}
+          field="content"
+          className="mt-2"
+        />
+      )}
 
       {/* Media Grid */}
       {mediaUrls && mediaUrls.length > 0 && (
@@ -105,7 +120,7 @@ export default function ThreadsCard({
       )}
 
       {/* Metrics */}
-      <div className="mt-3 flex items-center gap-6 border-t pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-4 border-t pt-3">
         <MetricItem
           icon={FaHeart}
           value={likeCount}
@@ -124,6 +139,14 @@ export default function ThreadsCard({
           label="Reposts"
           className="hover:text-green-500"
         />
+        {shareCount > 0 && (
+          <MetricItem
+            icon={FaShareFromSquare}
+            value={shareCount}
+            label="Shares"
+            className="hover:text-purple-500"
+          />
+        )}
       </div>
 
       {/* Trend Graph */}

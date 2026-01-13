@@ -49,11 +49,18 @@ export async function POST(request) {
     for (const item of items) {
       try {
         // content 테이블로 변환
+        // 번역된 제목이 있으면 한국어 제목으로 사용
+        const koreanTitle = item.translated_title || item.title || "(제목 없음)";
+        const englishTitle = item.translated_title ? item.title : null;
+
         const contentData = {
           slug: generateSlug(item.title, item.platform_id),
-          title: item.title || "(제목 없음)",
-          description: item.description,
-          body: item.content_text,
+          title: koreanTitle,
+          title_en: englishTitle,
+          description: item.translated_content?.slice(0, 500) || item.description,
+          description_en: item.translated_content ? item.description : null,
+          body: item.translated_content || item.content_text,
+          body_en: item.translated_content ? item.content_text : null,
           type: PLATFORM_TO_TYPE[item.platform] || "article",
           category: item.digest_result?.category || "ai-tools",
           tags: item.digest_result?.tags || [],
@@ -62,6 +69,9 @@ export async function POST(request) {
           social_metadata: {
             ...item.raw_data,
             platform: item.platform,
+            // 번역 정보도 저장 (카드에서 사용)
+            translatedTitle: item.translated_title,
+            translatedContent: item.translated_content,
           },
           platform_id: item.platform_id,
           author_info: {

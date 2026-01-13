@@ -61,6 +61,8 @@ export default function GitHubCard({
   trendshiftRepoId,
   licenseType,
   starHistoryUrl,
+  // LLM 요약 정보
+  llmSummary,
 }) {
   const locale = useLocale();
   const langColor = languageColor || LANGUAGE_COLORS[language] || "#586069";
@@ -86,12 +88,31 @@ export default function GitHubCard({
         </a>
       </div>
 
-      {/* Description */}
-      {description && (
+      {/* LLM Summary or Description */}
+      {llmSummary?.summary ? (
+        <div className="mt-2">
+          <p className="text-sm text-foreground">{llmSummary.summary}</p>
+          {llmSummary.features && llmSummary.features.length > 0 && (
+            <ul className="mt-2 space-y-0.5">
+              {llmSummary.features.slice(0, 3).map((feature, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          )}
+          {llmSummary.beginner_description && (
+            <p className="mt-2 text-xs text-muted-foreground italic">
+              💡 {llmSummary.beginner_description}
+            </p>
+          )}
+        </div>
+      ) : description ? (
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
           {description}
         </p>
-      )}
+      ) : null}
 
       {/* README Image */}
       {readmeImageUrl && (
