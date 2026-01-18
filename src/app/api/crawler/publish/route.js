@@ -43,6 +43,21 @@ export async function POST(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // items가 비어있으면 명확한 메시지 반환
+    if (!items || items.length === 0) {
+      console.log("No items found for ids:", ids);
+      return NextResponse.json(
+        {
+          error: "선택한 항목을 찾을 수 없습니다. 이미 게시되었거나 삭제되었을 수 있습니다.",
+          published: 0,
+          total: 0,
+          ids: ids
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(`Found ${items.length} items to publish`);
     let published = 0;
     const errors = [];
 
@@ -64,7 +79,9 @@ export async function POST(request) {
           type: PLATFORM_TO_TYPE[item.platform] || "article",
           category: item.digest_result?.category || "ai-tools",
           tags: item.digest_result?.tags || [],
-          thumbnail_url: item.thumbnail_url,
+          thumbnail_url: item.thumbnail_url
+            || item.raw_data?.downloadedMedia?.[0]
+            || item.screenshot_url,
           external_url: item.url,
           social_metadata: {
             ...item.raw_data,
@@ -72,15 +89,24 @@ export async function POST(request) {
             // 번역 정보도 저장 (카드에서 사용)
             translatedTitle: item.translated_title,
             translatedContent: item.translated_content,
+            // digest_result에서 metrics 정보 포함
+            digest_result: item.digest_result,
           },
           platform_id: item.platform_id,
           author_info: {
-            name: item.author_name,
+            // author_name이 @로 시작하면 핸들로 분리
+            name: item.author_name?.startsWith('@')
+              ? item.author_name.slice(1) // @ 제거한 이름
+              : item.author_name,
+            handle: item.author_name?.startsWith('@')
+              ? item.author_name // 핸들은 @username 형식 유지
+              : null,
             url: item.author_url,
             avatar: item.author_avatar,
           },
           status: "published",
-          published_at: new Date().toISOString(),
+          // 원본 게시 시간이 있으면 사용, 없으면 현재 시간
+          published_at: item.published_at || new Date().toISOString(),
         };
 
         const { error: insertError } = await supabase
@@ -88,17 +114,22 @@ export async function POST(request) {
           .insert(contentData);
 
         if (insertError) {
-          errors.push({ id: item.id, error: insertError.message });
+          console.error(`Failed to publish item ${item.id}:`, insertError);
+          errors.push({ id: item.id, platform: item.platform, title: item.title, error: insertError.message });
           continue;
         }
 
         // 성공 시 crawled_content 삭제
         await supabase.from("crawled_content").delete().eq("id", item.id);
         published++;
+        console.log(`Successfully published: ${item.platform} - ${item.title}`);
       } catch (err) {
+        console.error(`Error processing item ${item.id}:`, err);
         errors.push({ id: item.id, error: err.message });
       }
     }
+
+    console.log(`Publish complete: ${published}/${items.length} succeeded`);
 
     return NextResponse.json({
       success: true,
