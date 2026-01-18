@@ -1,12 +1,12 @@
 import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
-import { upsertCrawledContent, logCrawl } from "./index.js";
-import { translateContent } from "./translate.js";
+import { upsertCrawledContent, logCrawl, getScreenshotDir } from "./index.js";
 
 const FEED_URL = "https://x.com/home"; // Following 탭
 
 /**
  * X (Twitter) 크롤러
- * Playwright 스크린샷 방식
+ * 스크린샷 + 미디어 다운로드 방식
+ * 본문/메트릭 분석은 나중에 Claude로 수행
  * @param {Object} options
  * @param {number} options.limit - 최대 수집 개수 (기본: 20)
  */
@@ -21,10 +21,14 @@ export async function crawlX({ limit = 20 } = {}) {
     return { success: false, error: "No cookies found" };
   }
 
-  try {
-    const { screenshot, links, posts } = await crawlWithScreenshot("x", FEED_URL, cookies);
+  // 스크린샷 저장 폴더 생성 (플랫폼/타임스탬프 구조)
+  const screenshotInfo = getScreenshotDir("x");
+  logCrawl("x", `Screenshots will be saved to: ${screenshotInfo.dir}`);
 
-    logCrawl("x", `Captured screenshot, found ${links.length} links, ${posts.length} posts`);
+  try {
+    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot("x", FEED_URL, cookies, screenshotInfo);
+
+    logCrawl("x", `Feed screenshot captured, found ${links.length} links`);
 
     // 트윗 링크 필터링
     const tweetLinks = links.filter(
@@ -50,56 +54,56 @@ export async function crawlX({ limit = 20 } = {}) {
 
     if (uniqueTweets.size === 0) {
       logCrawl("x", "No tweets found");
-      return { success: true, count: 0 };
+      return { success: true, count: 0, items: [] };
     }
 
-    // 데이터 변환 + 상세 정보 추출
+    // 각 트윗 스크린샷 + 미디어 다운로드
     const tweetEntries = Array.from(uniqueTweets.entries()).slice(0, limit);
     const items = [];
 
-    logCrawl("x", `Fetching details for ${tweetEntries.length} tweets...`);
+    logCrawl("x", `Processing ${tweetEntries.length} tweets...`);
 
     for (const [tweetId, link] of tweetEntries) {
-      // URL에서 사용자명 추출 (x.com 또는 twitter.com)
+      // URL에서 사용자명 추출
       const userMatch = link.href.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status/);
       const username = userMatch ? userMatch[1] : null;
 
-      // 각 트윗 상세 정보 가져오기
-      let postDetails = { content: "", metrics: {} };
+      // 스크린샷 + 미디어 다운로드
+      let postDetails = { screenshotUrl: null, downloadedMedia: [] };
       try {
-        postDetails = await fetchPostDetails("x", link.href, cookies);
-        logCrawl("x", `Fetched details for ${tweetId}: ${postDetails.content.slice(0, 50)}...`);
+        postDetails = await fetchPostDetails("x", link.href, cookies, screenshotInfo);
+        logCrawl("x", `Captured: ${tweetId} (${postDetails.downloadedMedia?.length || 0} media)`);
       } catch (err) {
-        logCrawl("x", `Failed to fetch details for ${tweetId}: ${err.message}`);
+        logCrawl("x", `Failed for ${tweetId}: ${err.message}`);
       }
-
-      // 본문 번역
-      const translatedContent = await translateContent(postDetails.content || link.text);
 
       items.push({
         platform: "x",
         platform_id: tweetId,
-        title: postDetails.content?.slice(0, 200) || link.text?.slice(0, 200) || `Tweet ${tweetId}`,
-        description: postDetails.content?.slice(0, 500) || link.text?.slice(0, 500) || null,
-        content_text: postDetails.content || link.text || null,
-        translated_content: translatedContent,
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://x.com/${username}` : null,
-        screenshot_url: screenshot,
-        status: "pending",
+        screenshot_url: postDetails.screenshotUrl,
+        status: "pending_analysis",
         raw_data: {
-          linkText: link.text,
-          content: postDetails.content,
-          likes: postDetails.metrics?.likes || 0,
-          retweets: postDetails.metrics?.retweets || 0,
-          replies: postDetails.metrics?.replies || 0,
-          views: postDetails.metrics?.views || 0,
+          feedScreenshot,
+          screenshotUrls: postDetails.screenshotUrls || [],
+          downloadedMedia: postDetails.downloadedMedia || [],
+          mediaUrls: postDetails.mediaUrls || [],
+          externalLinks: postDetails.externalLinks || [],
+          // YouTube 관련 필드
+          youtubeUrl: postDetails.youtubeUrl || null,
+          youtubeVideoId: postDetails.youtubeVideoId || null,
+          youtubeEmbedUrl: postDetails.youtubeEmbedUrl || null,
+          // Twitter 네이티브 비디오
+          twitterVideoUrl: postDetails.twitterVideoUrl || null,
+          downloadedVideoUrl: postDetails.downloadedVideoUrl || null, // 로컬 다운로드된 비디오
+          hasVideo: postDetails.hasVideo || false,
         },
       });
 
-      // 너무 빠른 요청 방지
-      await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+      // 요청 간격
+      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
     }
 
     // DB에 저장
@@ -109,8 +113,8 @@ export async function crawlX({ limit = 20 } = {}) {
       throw error;
     }
 
-    logCrawl("x", `Successfully saved ${savedData?.length || items.length} tweets`);
-    return { success: true, count: savedData?.length || items.length };
+    logCrawl("x", `Saved ${savedData?.length || items.length} tweets`);
+    return { success: true, count: savedData?.length || items.length, items };
   } catch (error) {
     logCrawl("x", `Error: ${error.message}`);
     return { success: false, error: error.message };

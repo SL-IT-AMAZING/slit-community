@@ -25,7 +25,6 @@ const NavigationBar = () => {
   const navLinks = [
     { name: t("home"), path: "/" },
     { name: t("content"), path: "/content" },
-    { name: t("categories"), path: "/categories" },
     { name: t("homer"), path: "/homer" },
     { name: t("premium"), path: "/premium" },
   ];
@@ -144,7 +143,7 @@ const NavigationBar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="min-h-[44px] min-w-[44px] lg:hidden"
             onClick={toggleMenu}
           >
             {isMenuOpen ? <FaXmark size={20} /> : <FaBars size={20} />}
@@ -165,22 +164,22 @@ const NavigationBar = () => {
               type: "tween",
               ease: "easeInOut",
             }}
-            className="fixed right-0 top-0 z-50 flex h-screen w-[70%] flex-col border-l bg-background p-6"
+            className="fixed right-0 top-0 z-50 flex h-screen w-[85%] max-w-sm flex-col border-l bg-background p-4 sm:w-[70%] sm:p-6"
           >
             {/* Close button */}
-            <div className="mb-8 flex justify-end">
-              <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
+            <div className="mb-6 flex justify-end sm:mb-8">
+              <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => setIsMenuOpen(false)}>
                 <FaXmark size={20} />
               </Button>
             </div>
 
             {/* Mobile Nav Links */}
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-2 sm:gap-4">
               {navLinks.map((navLink, index) => (
                 <li key={index}>
                   <Link
                     href={navLink.path}
-                    className="text-lg font-medium"
+                    className="block min-h-[44px] py-2 text-base font-medium sm:text-lg"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {navLink.name}
@@ -190,25 +189,25 @@ const NavigationBar = () => {
             </ul>
 
             {/* Mobile Auth Buttons */}
-            <div className="mt-8 flex flex-col gap-2">
+            <div className="mt-6 flex flex-col gap-2 sm:mt-8">
               {isAuthenticated ? (
                 <>
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="outline" className="w-full">
+                      <Button variant="outline" className="min-h-[44px] w-full">
                         <FaGear className="mr-2" size={14} />
                         Admin
                       </Button>
                     </Link>
                   )}
                   <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="min-h-[44px] w-full">
                       <FaUser className="mr-2" size={14} />
                       {t("profile")}
                     </Button>
                   </Link>
                   <Button
-                    className="w-full"
+                    className="min-h-[44px] w-full"
                     onClick={() => {
                       setIsMenuOpen(false);
                       signOut({ callbackUrl: `/${locale}` });
@@ -221,12 +220,12 @@ const NavigationBar = () => {
               ) : (
                 <>
                   <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="min-h-[44px] w-full">
                       {t("login")}
                     </Button>
                   </Link>
                   <Link href="/register" onClick={() => setIsMenuOpen(false)}>
-                    <Button className="w-full">{t("register")}</Button>
+                    <Button className="min-h-[44px] w-full">{t("register")}</Button>
                   </Link>
                 </>
               )}

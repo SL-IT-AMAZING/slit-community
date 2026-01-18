@@ -1,5 +1,4 @@
 import { upsertCrawledContent, getExistingPlatformIds, logCrawl } from "./index.js";
-import { translateTitle, translateContent } from "./translate.js";
 
 const SUBREDDIT = "vibecoding";
 const FETCH_LIMIT = 20;
@@ -108,32 +107,22 @@ export async function crawlReddit({ limit = FETCH_LIMIT, fetchAvatars = true } =
       }
     }
 
-    // 데이터 변환 + 번역
-    logCrawl("reddit", "Translating posts...");
-    const items = [];
-
-    for (const post of newPosts) {
+    // 데이터 변환
+    const items = newPosts.map((post) => {
       const p = post.data;
-
-      // 제목/본문 번역
-      const translatedTitleText = await translateTitle(p.title);
-      const translatedContentText = p.selftext ? await translateContent(p.selftext) : null;
-
-      items.push({
+      return {
         platform: "reddit",
         platform_id: p.id,
         title: p.title,
-        translated_title: translatedTitleText,
         description: p.selftext?.slice(0, 500) || null,
         content_text: p.selftext || null,
-        translated_content: translatedContentText,
         url: `https://reddit.com${p.permalink}`,
         author_name: p.author,
         author_url: `https://reddit.com/u/${p.author}`,
         author_avatar: authorAvatars[p.author] || null,
         thumbnail_url: isValidThumbnail(p.thumbnail) ? p.thumbnail : null,
         published_at: new Date(p.created_utc * 1000).toISOString(),
-        status: "pending",
+        status: "pending_analysis",
         raw_data: {
           score: p.score,
           num_comments: p.num_comments,
@@ -142,11 +131,8 @@ export async function crawlReddit({ limit = FETCH_LIMIT, fetchAvatars = true } =
           is_video: p.is_video,
           post_hint: p.post_hint,
         },
-      });
-
-      // Rate limiting
-      await new Promise((r) => setTimeout(r, 300));
-    }
+      };
+    });
 
     // DB에 저장
     const { data: savedData, error } = await upsertCrawledContent(items);

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embed Test - X / Threads / YouTube / Reddit</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #333; }
+    h2 {
+      color: #666;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 10px;
+      margin-top: 40px;
+    }
+    .embed-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .platform-icon {
+      font-size: 24px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Platform Embed Test</h1>
+  <p>각 플랫폼의 공식 Embed 테스트 페이지입니다.</p>
+
+  <!-- X (Twitter) -->
+  <h2><span class="platform-icon">𝕏</span>X (Twitter) Embed</h2>
+  <div class="embed-container">
+    <blockquote class="twitter-tweet">
+      <a href="https://twitter.com/OpenAI/status/1745117109934575701"></a>
+    </blockquote>
+  </div>
+
+  <!-- Threads -->
+  <h2><span class="platform-icon">🧵</span>Threads Embed</h2>
+  <div class="embed-container">
+    <blockquote class="text-post-media"
+      data-text-post-permalink="https://www.threads.net/@zaborskidev/post/DDpyGJaNhyV"
+      data-text-post-version="0">
+    </blockquote>
+  </div>
+
+  <!-- YouTube -->
+  <h2><span class="platform-icon">▶️</span>YouTube Embed</h2>
+  <div class="embed-container">
+    <iframe
+      width="100%"
+      height="400"
+      src="https://www.youtube.com/embed/jvqFAi7vkBc"
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen>
+    </iframe>
+  </div>
+
+  <!-- Reddit -->
+  <h2><span class="platform-icon">🤖</span>Reddit Embed</h2>
+  <div class="embed-container">
+    <blockquote class="reddit-embed-bq" data-embed-height="500">
+      <a href="https://www.reddit.com/r/LocalLLaMA/comments/1i0t7qm/qwen_25_max_is_here/">
+        Qwen 2.5 Max is here!
+      </a>
+    </blockquote>
+  </div>
+
+  <!-- LinkedIn (참고용 - embed 제한적) -->
+  <h2><span class="platform-icon">💼</span>LinkedIn (제한적)</h2>
+  <div class="embed-container">
+    <p style="color: #666;">
+      LinkedIn은 공식 embed을 제공하지 않습니다.<br>
+      대안: 링크 + 썸네일 이미지로 표시
+    </p>
+    <a href="https://www.linkedin.com/feed/update/urn:li:activity:7416954701042077696/"
+       target="_blank"
+       style="color: #0077b5; text-decoration: none;">
+      🔗 LinkedIn 포스트 보기
+    </a>
+  </div>
+
+  <!-- GitHub (참고용) -->
+  <h2><span class="platform-icon">🐙</span>GitHub (README 카드)</h2>
+  <div class="embed-container">
+    <a href="https://github.com/anthropics/claude-code" target="_blank">
+      <img src="https://gh-card.dev/repos/anthropics/claude-code.svg"
+           alt="GitHub Card"
+           style="max-width: 100%;">
+    </a>
+  </div>
+
+  <!-- Scripts (마지막에 로드) -->
+  <script async src="https://platform.twitter.com/widgets.js"></script>
+  <script async src="https://www.threads.net/embed.js"></script>
+  <script async src="https://embed.reddit.com/widgets.js"></script>
+</body>
+</html>

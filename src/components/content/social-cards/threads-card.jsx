@@ -1,16 +1,16 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
-import { FaAt, FaHeart, FaComment, FaRetweet, FaShareFromSquare } from "react-icons/fa6";
+import { FaHeart, FaRetweet } from "react-icons/fa6";
 
 import BaseSocialCard, {
   AuthorInfo,
   MetricItem,
+  MediaGrid,
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
-import TranslateButton from "../translate-button";
-import { cn } from "@/lib/utils";
 
 // Threads 아이콘 (react-icons에 없는 경우 커스텀)
 function ThreadsIcon({ size = 16, className }) {
@@ -43,16 +43,22 @@ export default function ThreadsCard({
   metricsHistory = [],
   contentId,
   translatedContent,
+  hasVideo = false,
+  threadsVideoUrl = null,
   className,
 }) {
   const locale = useLocale();
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef(null);
 
-  // 미디어 그리드 레이아웃
-  const getMediaGridClass = (count) => {
-    if (count === 1) return "grid-cols-1";
-    if (count === 2) return "grid-cols-2";
-    return "grid-cols-2";
-  };
+  const MAX_HEIGHT = 120; // 최대 높이 (px)
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflowing(contentRef.current.scrollHeight > MAX_HEIGHT);
+    }
+  }, [content, translatedContent, locale]);
 
   return (
     <BaseSocialCard
@@ -69,48 +75,44 @@ export default function ThreadsCard({
         verified={verified}
       />
 
-      {/* Content */}
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
-        {content}
-      </p>
-
-      {/* Translate Button */}
-      {content && (
-        <TranslateButton
-          text={content}
-          translatedText={translatedContent}
-          contentId={contentId}
-          field="content"
-          className="mt-2"
-        />
-      )}
-
-      {/* Media Grid */}
-      {mediaUrls && mediaUrls.length > 0 && (
-        <div
-          className={cn(
-            "mt-3 grid gap-1 overflow-hidden rounded-xl",
-            getMediaGridClass(mediaUrls.length)
-          )}
+      {/* Content - locale에 따라 분기 */}
+      <div className="relative mt-3">
+        <p
+          ref={contentRef}
+          className={`whitespace-pre-wrap text-sm leading-relaxed transition-all ${
+            !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
+          }`}
         >
-          {mediaUrls.slice(0, 4).map((url, i) => (
-            <div
-              key={i}
-              className={cn(
-                "relative aspect-square overflow-hidden rounded-lg",
-                mediaUrls.length === 1 && "aspect-auto"
-              )}
+          {(locale === "ko" && translatedContent ? translatedContent : content)?.replace(/\\n/g, '\n')}
+        </p>
+        {/* 그라데이션 + 더보기 버튼 */}
+        {isOverflowing && !expanded && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-8">
+            <button
+              onClick={() => setExpanded(true)}
+              className="min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
             >
-              <img
-                src={url}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          ))}
-        </div>
-      )}
+              {locale === "ko" ? "더보기" : "Show more"}
+            </button>
+          </div>
+        )}
+        {/* 접기 버튼 */}
+        {expanded && isOverflowing && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="mt-2 min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
+          >
+            {locale === "ko" ? "접기" : "Show less"}
+          </button>
+        )}
+      </div>
+
+      {/* Media Grid with Lightbox */}
+      <MediaGrid
+        mediaUrls={mediaUrls}
+        videoUrl={threadsVideoUrl}
+        externalUrl={externalUrl}
+      />
 
       {/* Date */}
       {publishedAt && (
@@ -120,7 +122,7 @@ export default function ThreadsCard({
       )}
 
       {/* Metrics */}
-      <div className="mt-3 flex flex-wrap items-center gap-4 border-t pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 sm:gap-4">
         <MetricItem
           icon={FaHeart}
           value={likeCount}
@@ -128,25 +130,11 @@ export default function ThreadsCard({
           className="hover:text-red-500"
         />
         <MetricItem
-          icon={FaComment}
-          value={replyCount}
-          label="Replies"
-          className="hover:text-blue-500"
-        />
-        <MetricItem
           icon={FaRetweet}
           value={repostCount}
           label="Reposts"
           className="hover:text-green-500"
         />
-        {shareCount > 0 && (
-          <MetricItem
-            icon={FaShareFromSquare}
-            value={shareCount}
-            label="Shares"
-            className="hover:text-purple-500"
-          />
-        )}
       </div>
 
       {/* Trend Graph */}
