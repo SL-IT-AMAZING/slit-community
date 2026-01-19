@@ -122,7 +122,7 @@ export default function LatestContentSection({
               {platformContent.length > 0 ? (
                 <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0">
                   {platformContent.map((item) => (
-                    <div key={item.id} className="w-[85vw] flex-shrink-0 sm:w-80 md:w-96">
+                    <div key={item.id} className="w-[calc(100vw-32px)] flex-shrink-0 sm:w-80 md:w-96">
                       <SocialCardRenderer content={item} />
                     </div>
                   ))}

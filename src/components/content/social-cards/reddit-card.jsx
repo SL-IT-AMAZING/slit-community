@@ -102,7 +102,7 @@ export default function RedditCard({
         <div className="relative mt-2">
           <p
             ref={contentRef}
-            className={`whitespace-pre-wrap text-sm text-muted-foreground transition-all ${
+            className={`whitespace-pre-wrap break-words text-sm text-muted-foreground transition-all ${
               !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
             }`}
           >
