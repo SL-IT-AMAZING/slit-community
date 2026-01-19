@@ -26,8 +26,15 @@ const NavigationBar = () => {
     { name: t("home"), path: "/" },
     { name: t("content"), path: "/content" },
     { name: t("homer"), path: "/homer" },
-    { name: t("premium"), path: "/premium" },
+    { name: t("premium"), path: "/premium", comingSoon: true },
   ];
+
+  const handleNavClick = (e, navLink) => {
+    if (navLink.comingSoon) {
+      e.preventDefault();
+      alert("준비중입니다");
+    }
+  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -80,6 +87,7 @@ const NavigationBar = () => {
               key={index}
               href={navLink.path}
               className="text-sm font-medium transition-colors hover:text-primary"
+              onClick={(e) => handleNavClick(e, navLink)}
             >
               {navLink.name}
             </Link>
@@ -180,7 +188,14 @@ const NavigationBar = () => {
                   <Link
                     href={navLink.path}
                     className="block min-h-[44px] py-2 text-base font-medium sm:text-lg"
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={(e) => {
+                      if (navLink.comingSoon) {
+                        e.preventDefault();
+                        alert("준비중입니다");
+                      } else {
+                        setIsMenuOpen(false);
+                      }
+                    }}
                   >
                     {navLink.name}
                   </Link>

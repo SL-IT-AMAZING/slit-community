@@ -79,7 +79,7 @@ export default function ThreadsCard({
       <div className="relative mt-3">
         <p
           ref={contentRef}
-          className={`whitespace-pre-wrap text-sm leading-relaxed transition-all ${
+          className={`whitespace-pre-wrap break-words text-sm leading-relaxed transition-all ${
             !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
           }`}
         >

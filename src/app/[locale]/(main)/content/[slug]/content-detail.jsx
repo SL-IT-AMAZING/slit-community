@@ -26,6 +26,7 @@ import {
 } from "react-icons/fa6";
 
 import { createClient } from "@/lib/supabase/client";
+import { MediaGrid } from "@/components/content/social-cards/base-social-card";
 
 function ContentTypeIcon({ type, size = 16 }) {
   switch (type) {
@@ -222,19 +223,43 @@ export default function ContentDetail({ content, locale }) {
         </div>
       </header>
 
-      {/* Thumbnail */}
-      {content.thumbnailUrl && (
-        <div className="mb-8 overflow-hidden rounded-lg">
-          <img
-            src={content.thumbnailUrl}
-            alt={displayTitle}
-            className="h-auto w-full object-cover"
-          />
-        </div>
-      )}
+      {/* Media Grid - 실제 다운로드된 미디어 표시 (메인화면과 동일) */}
+      {(() => {
+        // 미디어 URL 추출 (downloadedMedia 우선, 없으면 thumbnailUrl 사용)
+        const mediaUrls = content.socialMetadata?.downloadedMedia || [];
+        const videoUrl = content.socialMetadata?.downloadedVideo?.[0] || null;
+
+        // 미디어가 있으면 MediaGrid 사용
+        if (mediaUrls.length > 0 || videoUrl) {
+          return (
+            <div className="mb-8">
+              <MediaGrid
+                mediaUrls={mediaUrls}
+                videoUrl={videoUrl}
+                externalUrl={content.externalUrl}
+              />
+            </div>
+          );
+        }
+
+        // 미디어가 없고 thumbnailUrl만 있으면 단일 이미지 표시
+        if (content.thumbnailUrl) {
+          return (
+            <div className="mb-8 overflow-hidden rounded-lg">
+              <img
+                src={content.thumbnailUrl}
+                alt={displayTitle}
+                className="h-auto w-full object-cover"
+              />
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Content body */}
-      <article className="prose prose-sm prose-neutral max-w-none dark:prose-invert md:prose-base prose-headings:font-cera prose-h1:text-xl prose-h2:text-lg prose-h3:text-base md:prose-h1:text-2xl md:prose-h2:text-xl md:prose-h3:text-lg prose-pre:overflow-x-auto prose-pre:bg-muted prose-pre:text-foreground">
+      <article className="prose prose-sm prose-neutral max-w-none dark:prose-invert md:prose-base prose-headings:font-cera prose-h1:text-xl prose-h2:text-lg prose-h3:text-base md:prose-h1:text-2xl md:prose-h2:text-xl md:prose-h3:text-lg prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-table:max-w-full">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {displayBody || ""}
         </ReactMarkdown>
