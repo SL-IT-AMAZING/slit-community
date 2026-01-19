@@ -170,6 +170,8 @@ export async function POST(request) {
           analyzed_at: new Date().toISOString(),
         });
 
+        // 번역은 슬래시 커맨드 플로우에서 별도로 진행
+
         results.push({ id, success: true });
       } catch (error) {
         console.error(`Error analyzing item ${id}:`, error);

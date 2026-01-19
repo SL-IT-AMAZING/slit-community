@@ -1,130 +1,148 @@
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+// Lazy load supabase to avoid build-time issues
+async function getSupabase() {
+  const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
+  return getSupabaseAdmin();
+}
 
-export const authOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID ?? "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-    }),
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+// Create authOptions with providers - called only at runtime
+export async function createAuthOptions() {
+  // Dynamic imports for providers to avoid ESM/CJS issues at build time
+  const [googleMod, githubMod, credentialsMod] = await Promise.all([
+    import("next-auth/providers/google"),
+    import("next-auth/providers/github"),
+    import("next-auth/providers/credentials"),
+  ]);
 
-        try {
-          const supabaseAdmin = getSupabaseAdmin();
+  const GoogleProvider = googleMod.default;
+  const GitHubProvider = githubMod.default;
+  const CredentialsProvider = credentialsMod.default;
 
-          // Use Supabase Auth to verify credentials
-          const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-            email: credentials.email,
-            password: credentials.password,
-          });
-
-          if (error || !data.user) {
+  return {
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      }),
+      GitHubProvider({
+        clientId: process.env.GITHUB_CLIENT_ID ?? "",
+        clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+      }),
+      CredentialsProvider({
+        name: "credentials",
+        credentials: {
+          email: { label: "Email", type: "email" },
+          password: { label: "Password", type: "password" },
+        },
+        async authorize(credentials) {
+          if (!credentials?.email || !credentials?.password) {
             return null;
           }
 
-          // Get user profile from our users table
-          const { data: profile } = await supabaseAdmin
-            .from("users")
-            .select("*")
-            .eq("email", data.user.email)
-            .single();
+          try {
+            const supabaseAdmin = await getSupabase();
 
-          return {
-            id: profile?.id || data.user.id,
-            email: data.user.email,
-            name: profile?.display_name || data.user.user_metadata?.full_name,
-            image: profile?.photo_url || data.user.user_metadata?.avatar_url,
-            role: profile?.role || "user",
-            isPremium: profile?.is_premium || false,
-          };
-        } catch (error) {
-          console.error("Credentials auth error:", error);
-          return null;
-        }
-      },
-    }),
-  ],
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  callbacks: {
-    async signIn({ user, account }) {
-      // For OAuth providers, create/update user in our users table
-      if (account?.provider === "google" || account?.provider === "github") {
-        try {
-          const supabaseAdmin = getSupabaseAdmin();
-          await supabaseAdmin.from("users").upsert(
-            {
-              email: user.email,
-              display_name: user.name,
-              photo_url: user.image,
-              provider: account.provider,
-            },
-            { onConflict: "email" }
-          );
-        } catch (error) {
-          console.error("Error syncing user to Supabase:", error);
-        }
-      }
-      return true;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub;
-        session.user.role = token.role ?? "user";
-        session.user.isPremium = token.isPremium ?? false;
-      }
-      return session;
-    },
-    async jwt({ token, user, trigger, account }) {
-      // On initial login or session update, fetch role from database
-      if (user || trigger === "update" || (account && !token.role)) {
-        try {
-          const supabaseAdmin = getSupabaseAdmin();
-          const { data: profile } = await supabaseAdmin
-            .from("users")
-            .select("role, is_premium")
-            .eq("email", token.email)
-            .single();
+            const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+              email: credentials.email,
+              password: credentials.password,
+            });
 
-          if (profile) {
-            token.role = profile.role;
-            token.isPremium = profile.is_premium;
-          } else {
-            token.role = "user";
-            token.isPremium = false;
+            if (error || !data.user) {
+              return null;
+            }
+
+            const { data: profile } = await supabaseAdmin
+              .from("users")
+              .select("*")
+              .eq("email", data.user.email)
+              .single();
+
+            return {
+              id: profile?.id || data.user.id,
+              email: data.user.email,
+              name: profile?.display_name || data.user.user_metadata?.full_name,
+              image: profile?.photo_url || data.user.user_metadata?.avatar_url,
+              role: profile?.role || "user",
+              isPremium: profile?.is_premium || false,
+            };
+          } catch (error) {
+            console.error("Credentials auth error:", error);
+            return null;
           }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          token.role = token.role ?? "user";
-          token.isPremium = token.isPremium ?? false;
-        }
-      }
-
-      return token;
+        },
+      }),
+    ],
+    pages: {
+      signIn: "/login",
+      error: "/login",
     },
-  },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-};
+    callbacks: {
+      async signIn({ user, account }) {
+        if (account?.provider === "google" || account?.provider === "github") {
+          try {
+            const supabaseAdmin = await getSupabase();
+            await supabaseAdmin.from("users").upsert(
+              {
+                email: user.email,
+                display_name: user.name,
+                photo_url: user.image,
+                provider: account.provider,
+              },
+              { onConflict: "email" }
+            );
+          } catch (error) {
+            console.error("Error syncing user to Supabase:", error);
+          }
+        }
+        return true;
+      },
+      async session({ session, token }) {
+        if (session.user) {
+          session.user.id = token.sub;
+          session.user.role = token.role ?? "user";
+          session.user.isPremium = token.isPremium ?? false;
+        }
+        return session;
+      },
+      async jwt({ token, user, trigger, account }) {
+        if (user || trigger === "update" || (account && !token.role)) {
+          try {
+            const supabaseAdmin = await getSupabase();
+            const { data: profile } = await supabaseAdmin
+              .from("users")
+              .select("role, is_premium")
+              .eq("email", token.email)
+              .single();
 
-export default NextAuth(authOptions);
+            if (profile) {
+              token.role = profile.role;
+              token.isPremium = profile.is_premium;
+            } else {
+              token.role = "user";
+              token.isPremium = false;
+            }
+          } catch (error) {
+            console.error("Error fetching user data:", error);
+            token.role = token.role ?? "user";
+            token.isPremium = token.isPremium ?? false;
+          }
+        }
+
+        return token;
+      },
+    },
+    session: {
+      strategy: "jwt",
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+  };
+}
+
+// Cached authOptions for runtime use
+let cachedAuthOptions = null;
+
+export async function getAuthOptions() {
+  if (!cachedAuthOptions) {
+    cachedAuthOptions = await createAuthOptions();
+  }
+  return cachedAuthOptions;
+}

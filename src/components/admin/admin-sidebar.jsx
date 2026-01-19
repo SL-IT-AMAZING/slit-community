@@ -82,7 +82,7 @@ export default function AdminSidebar({ isOpen = false, onClose }) {
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card transition-transform duration-300",
+          "fixed left-0 top-0 z-40 h-dvh w-64 border-r bg-card transition-transform duration-300",
           "md:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
