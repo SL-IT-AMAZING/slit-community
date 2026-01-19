@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
 import {
   FaGithub,
@@ -11,8 +12,8 @@ import {
   FaChartLine,
 } from "react-icons/fa6";
 
-import BaseSocialCard, { MetricItem, formatRelativeTime } from "./base-social-card";
-import SparklineChart from "./sparkline-chart";
+import BaseSocialCard, { MetricItem, formatRelativeTime, ImageLightbox } from "./base-social-card";
+import DetailModal from "./detail-modal";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -67,182 +68,228 @@ export default function GitHubCard({
   const locale = useLocale();
   const langColor = languageColor || LANGUAGE_COLORS[language] || "#586069";
 
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const contentRef = useRef(null);
+
+  const MAX_HEIGHT = 80; // description 최대 높이
+
+  // 설명 텍스트 결정
+  const displayDescription = llmSummary?.summary || description;
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflowing(contentRef.current.scrollHeight > MAX_HEIGHT);
+    }
+  }, [displayDescription]);
+
+  const modalData = {
+    repoOwner,
+    repoName,
+    description,
+    language,
+    languageColor,
+    stars,
+    forks,
+    issues,
+    watchers,
+    topics,
+    lastUpdated,
+    readmeImageUrl,
+    externalUrl: externalUrl || `https://github.com/${repoOwner}/${repoName}`,
+    metricsHistory,
+    trendshiftBadgeUrl,
+    trendshiftRank,
+    trendshiftRepoId,
+    licenseType,
+    starHistoryUrl,
+    llmSummary,
+  };
+
   return (
-    <BaseSocialCard
-      platform="github"
-      platformIcon={FaGithub}
-      externalUrl={externalUrl || `https://github.com/${repoOwner}/${repoName}`}
-      className={className}
-    >
-      {/* Repo Name */}
-      <div className="flex items-center gap-2">
-        <FaGithub size={20} className="text-muted-foreground" />
-        <a
-          href={externalUrl || `https://github.com/${repoOwner}/${repoName}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-sm font-semibold hover:text-primary hover:underline"
-        >
-          <span className="text-muted-foreground">{repoOwner}/</span>
-          {repoName}
-        </a>
-      </div>
-
-      {/* LLM Summary or Description */}
-      {llmSummary?.summary ? (
-        <div className="mt-2">
-          <p className="text-sm text-foreground">{llmSummary.summary}</p>
-          {llmSummary.features && llmSummary.features.length > 0 && (
-            <ul className="mt-2 space-y-0.5">
-              {llmSummary.features.slice(0, 3).map((feature, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          )}
-          {llmSummary.beginner_description && (
-            <p className="mt-2 text-xs text-muted-foreground italic">
-              💡 {llmSummary.beginner_description}
-            </p>
-          )}
-        </div>
-      ) : description ? (
-        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-
-      {/* README Image */}
-      {readmeImageUrl && (
-        <div className="mt-3 overflow-hidden rounded-base border-2 border-border">
-          <img
-            src={readmeImageUrl}
-            alt={`${repoName} preview`}
-            className="h-auto w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      {/* Trendshift Badge Graph */}
-      {trendshiftBadgeUrl && (
-        <div className="mt-3 overflow-hidden rounded-base border-2 border-border bg-white">
+    <>
+      <BaseSocialCard
+        platform="github"
+        platformIcon={FaGithub}
+        externalUrl={externalUrl || `https://github.com/${repoOwner}/${repoName}`}
+        className={className}
+        onClick={() => setModalOpen(true)}
+      >
+        {/* Repo Name */}
+        <div className="flex items-center gap-2">
+          <FaGithub size={20} className="text-muted-foreground" />
           <a
-            href={
-              trendshiftRepoId
-                ? `https://trendshift.io/repositories/${trendshiftRepoId}`
-                : `https://trendshift.io`
-            }
+            href={externalUrl || `https://github.com/${repoOwner}/${repoName}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="font-mono text-sm font-semibold hover:text-primary hover:underline"
           >
-            <img
-              src={trendshiftBadgeUrl}
-              alt="Trendshift Trending Badge"
-              className="h-auto w-full"
-              loading="lazy"
-            />
+            <span className="text-muted-foreground">{repoOwner}/</span>
+            {repoName}
           </a>
         </div>
-      )}
 
-      {/* Star History Graph */}
-      {starHistoryUrl && (
-        <div className="mt-3 overflow-hidden rounded-base border-2 border-border bg-white">
-          <a
-            href={`https://star-history.com/#${repoOwner}/${repoName}&Date`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src={starHistoryUrl}
-              alt="Star History"
-              className="h-auto w-full"
-              loading="lazy"
-            />
-          </a>
-        </div>
-      )}
-
-      {/* Topics */}
-      {topics && topics.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {topics.slice(0, 5).map((topic) => (
-            <Badge
-              key={topic}
-              variant="secondary"
-              className="text-xs font-normal"
+        {/* LLM Summary or Description with Show More */}
+        {displayDescription && (
+          <div className="relative mt-2">
+            <div
+              ref={contentRef}
+              className={`transition-all ${
+                !expanded && isOverflowing ? "max-h-[80px] overflow-hidden" : ""
+              }`}
             >
-              {topic}
-            </Badge>
-          ))}
-          {topics.length > 5 && (
-            <Badge variant="secondary" className="text-xs font-normal">
-              +{topics.length - 5}
-            </Badge>
+              {llmSummary?.summary ? (
+                <>
+                  <p className="text-sm text-foreground">{llmSummary.summary}</p>
+                  {llmSummary.features && llmSummary.features.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {llmSummary.features.slice(0, 3).map((feature, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {llmSummary.beginner_description && (
+                    <p className="mt-2 text-xs text-muted-foreground italic">
+                      💡 {llmSummary.beginner_description}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">{description}</p>
+              )}
+            </div>
+            {/* 그라데이션 + 더보기 버튼 */}
+            {isOverflowing && !expanded && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-6">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(true);
+                  }}
+                  className="min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
+                >
+                  {locale === "ko" ? "더보기" : "Show more"}
+                </button>
+              </div>
+            )}
+            {/* 접기 버튼 */}
+            {expanded && isOverflowing && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(false);
+                }}
+                className="mt-1 min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
+              >
+                {locale === "ko" ? "접기" : "Show less"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* README Image (스크린샷 - GitHub만) - 클릭하면 확대 */}
+        {readmeImageUrl && (
+          <div
+            className="mt-3 overflow-hidden rounded-base border-2 border-border cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              setImageLightboxOpen(true);
+            }}
+          >
+            <img
+              src={readmeImageUrl}
+              alt={`${repoName} preview`}
+              className="h-auto w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+
+        {/* Topics */}
+        {topics && topics.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {topics.slice(0, 5).map((topic) => (
+              <Badge
+                key={topic}
+                variant="secondary"
+                className="text-xs font-normal"
+              >
+                {topic}
+              </Badge>
+            ))}
+            {topics.length > 5 && (
+              <Badge variant="secondary" className="text-xs font-normal">
+                +{topics.length - 5}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Language & Metrics */}
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+          {language && (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: langColor }}
+              />
+              {language}
+            </span>
+          )}
+          <MetricItem icon={FaStar} value={stars} label="Stars" />
+          <MetricItem icon={FaCodeBranch} value={forks} label="Forks" />
+          {issues !== undefined && (
+            <MetricItem icon={FaCircleExclamation} value={issues} label="Issues" />
+          )}
+          {trendshiftRank && (
+            <span className="flex items-center gap-1 text-purple-500">
+              <FaChartLine size={14} />
+              <span className="font-medium">#{trendshiftRank}</span>
+            </span>
           )}
         </div>
-      )}
 
-      {/* Language & Metrics */}
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-        {language && (
-          <span className="flex items-center gap-1.5">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: langColor }}
-            />
-            {language}
-          </span>
+        {/* License Badge */}
+        {licenseType && (
+          <div className="mt-2">
+            <Badge variant="outline" className="gap-1 text-xs">
+              <FaScaleBalanced size={10} />
+              {licenseType}
+            </Badge>
+          </div>
         )}
-        <MetricItem icon={FaStar} value={stars} label="Stars" />
-        <MetricItem icon={FaCodeBranch} value={forks} label="Forks" />
-        {issues !== undefined && (
-          <MetricItem icon={FaCircleExclamation} value={issues} label="Issues" />
+
+        {/* Last Updated */}
+        {lastUpdated && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {locale === "ko" ? "업데이트" : "Updated"}{" "}
+            {formatRelativeTime(lastUpdated, locale)}
+          </p>
         )}
-        {trendshiftRank && (
-          <span className="flex items-center gap-1 text-purple-500">
-            <FaChartLine size={14} />
-            <span className="font-medium">#{trendshiftRank}</span>
-          </span>
-        )}
-      </div>
+      </BaseSocialCard>
 
-      {/* License Badge */}
-      {licenseType && (
-        <div className="mt-2">
-          <Badge variant="outline" className="gap-1 text-xs">
-            <FaScaleBalanced size={10} />
-            {licenseType}
-          </Badge>
-        </div>
-      )}
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        platform="github"
+        data={modalData}
+      />
 
-      {/* Star Trend Graph */}
-      {metricsHistory && metricsHistory.length > 1 && (
-        <div className="mt-3 flex items-center justify-between border-t pt-3">
-          <span className="text-xs text-muted-foreground">
-            {locale === "ko" ? "스타 추이" : "Stars trend"}
-          </span>
-          <SparklineChart
-            data={metricsHistory}
-            dataKey="stars"
-            width={100}
-            height={28}
-            showTrend
-          />
-        </div>
+      {/* Image Lightbox */}
+      {readmeImageUrl && (
+        <ImageLightbox
+          images={[readmeImageUrl]}
+          initialIndex={0}
+          isOpen={imageLightboxOpen}
+          onClose={() => setImageLightboxOpen(false)}
+        />
       )}
-
-      {/* Last Updated */}
-      {lastUpdated && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {locale === "ko" ? "업데이트" : "Updated"}{" "}
-          {formatRelativeTime(lastUpdated, locale)}
-        </p>
-      )}
-    </BaseSocialCard>
+    </>
   );
 }

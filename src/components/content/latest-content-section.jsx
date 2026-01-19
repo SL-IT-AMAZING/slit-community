@@ -51,11 +51,13 @@ export default function LatestContentSection({
   const locale = useLocale();
   const t = useTranslations();
 
-  // 플랫폼별로 콘텐츠 그룹화
+  // 플랫폼별로 콘텐츠 그룹화 (각 6개씩)
   const contentByPlatform = useMemo(() => {
     const grouped = {};
     PLATFORMS.forEach((platform) => {
-      grouped[platform.id] = content.filter((item) => item.type === platform.type);
+      grouped[platform.id] = content
+        .filter((item) => item.type === platform.type)
+        .slice(0, 6);
     });
     return grouped;
   }, [content]);
@@ -93,7 +95,7 @@ export default function LatestContentSection({
           return (
             <div key={platform.id}>
               {/* 플랫폼 헤더 */}
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div
                     className="flex h-8 w-8 items-center justify-center rounded-md"
@@ -110,7 +112,7 @@ export default function LatestContentSection({
                 </div>
                 {platformContent.length > 0 && (
                   <Link href={`/content?type=${platform.type}`}>
-                    <Button variant="ghost" size="sm" className="gap-1 text-sm">
+                    <Button variant="ghost" size="sm" className="flex-shrink-0 gap-1 whitespace-nowrap text-xs sm:text-sm">
                       {locale === "ko" ? "모두보기" : "View all"}
                       <FaArrowRight size={10} />
                     </Button>
@@ -120,12 +122,14 @@ export default function LatestContentSection({
 
               {/* 콘텐츠 가로 스크롤 */}
               {platformContent.length > 0 ? (
-                <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0">
-                  {platformContent.map((item) => (
-                    <div key={item.id} className="w-[calc(100vw-32px)] flex-shrink-0 sm:w-80 md:w-96">
-                      <SocialCardRenderer content={item} />
-                    </div>
-                  ))}
+                <div className="relative">
+                  <div className="-mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-4 scrollbar-hide sm:mx-0 sm:gap-4 sm:px-0">
+                    {platformContent.map((item) => (
+                      <div key={item.id} className="w-[280px] flex-shrink-0 sm:w-80 md:w-96">
+                        <SocialCardRenderer content={item} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="flex min-h-48 items-center justify-center rounded-base border-2 border-dashed border-border">

@@ -55,15 +55,34 @@ export default function BaseSocialCard({
   children,
   className,
   compact = false,
+  onClick,
 }) {
   const config = PLATFORM_CONFIG[platform] || PLATFORM_CONFIG.x;
+
+  const handleCardClick = (e) => {
+    // 버튼이나 링크, 비디오/이미지 클릭은 무시
+    if (
+      e.target.closest("button") ||
+      e.target.closest("a") ||
+      e.target.closest("video") ||
+      e.target.closest("iframe") ||
+      e.target.tagName === "IMG"
+    ) {
+      return;
+    }
+    if (onClick) {
+      onClick(e);
+    }
+  };
 
   return (
     <Card
       className={cn(
         "group flex flex-col overflow-hidden transition-all hover:shadow-lg",
+        onClick && "cursor-pointer",
         className
       )}
+      onClick={handleCardClick}
     >
       <CardHeader className={cn("flex-shrink-0 pb-2", compact && "py-3")}>
         <div className="flex items-center justify-between">
@@ -173,6 +192,7 @@ export function MetricItem({ icon: Icon, value, label, className }) {
         className
       )}
       title={label}
+      onClick={(e) => e.stopPropagation()}
     >
       {Icon && <Icon size={14} />}
       {formattedValue}
@@ -315,7 +335,10 @@ export function MediaGrid({
       <div
         key="youtube"
         className={cn("relative overflow-hidden cursor-pointer group", itemClassName)}
-        onClick={() => setYoutubeLightboxOpen(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setYoutubeLightboxOpen(true);
+        }}
       >
         <img
           src={thumbnailUrl}
@@ -344,7 +367,10 @@ export function MediaGrid({
     <div
       key="video"
       className={cn("relative overflow-hidden cursor-pointer group bg-black", itemClassName)}
-      onClick={() => setVideoLightboxOpen(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setVideoLightboxOpen(true);
+      }}
     >
       <video
         src={videoUrl}
@@ -367,7 +393,10 @@ export function MediaGrid({
     <div
       key={`img-${index}`}
       className={cn("relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity", itemClassName)}
-      onClick={() => openImageLightbox(index)}
+      onClick={(e) => {
+        e.stopPropagation();
+        openImageLightbox(index);
+      }}
     >
       <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
       {showOverlay && overlayCount > 0 && (
@@ -401,15 +430,15 @@ export function MediaGrid({
     );
   }
 
-  // 2개: 나란히 (모바일에서는 세로 스택)
+  // 2개: 모바일에서도 나란히 배치
   if (totalItems === 2) {
     return (
       <>
-        <div className={cn("mt-3 grid grid-cols-1 gap-1 overflow-hidden rounded-xl border-2 border-border sm:grid-cols-2 sm:gap-0.5 sm:aspect-[16/9]", className)}>
+        <div className={cn("mt-3 grid grid-cols-2 gap-0.5 overflow-hidden rounded-xl border-2 border-border aspect-[2/1]", className)}>
           {allItems.map((item, i) => {
-            if (item.type === 'youtube') return renderYouTube("aspect-video sm:aspect-auto sm:h-full");
-            if (item.type === 'video') return renderVideo("aspect-video sm:aspect-auto sm:h-full");
-            return renderImage(item.url, item.index, "aspect-video sm:aspect-auto sm:h-full");
+            if (item.type === 'youtube') return renderYouTube("h-full");
+            if (item.type === 'video') return renderVideo("h-full");
+            return renderImage(item.url, item.index, "h-full");
           })}
         </div>
         <ImageLightbox images={mediaUrls} initialIndex={lightboxIndex} isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} />
