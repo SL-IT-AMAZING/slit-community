@@ -780,25 +780,53 @@ export default function CrawlerList({ initialContent, locale }) {
 
   // Publish to content table
   const handlePublish = async () => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0) {
+      alert(locale === "ko" ? "항목을 선택해주세요." : "Please select items.");
+      return;
+    }
 
     setIsProcessing(true);
     try {
+      const idsArray = Array.from(selectedIds);
+      console.log("Publishing items:", idsArray);
+
       const response = await fetch("/api/crawler/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+        body: JSON.stringify({ ids: idsArray }),
       });
 
+      const result = await response.json();
+      console.log("Publish result:", result);
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "API error");
+        throw new Error(result.error || "API error");
       }
 
-      const result = await response.json();
-      const message = locale === "ko"
-        ? `게시 완료: ${result.published}개 성공`
-        : `Published: ${result.published} items`;
+      // 성공/실패 메시지를 더 자세히 표시
+      let message = "";
+      if (result.published > 0) {
+        message = locale === "ko"
+          ? `게시 완료: ${result.published}개 성공`
+          : `Published: ${result.published} items`;
+
+        if (result.errors && result.errors.length > 0) {
+          const errorDetails = result.errors.map(e => `- ${e.title || e.id}: ${e.error}`).join("\n");
+          message += locale === "ko"
+            ? `\n\n실패한 항목 (${result.errors.length}개):\n${errorDetails}`
+            : `\n\nFailed items (${result.errors.length}):\n${errorDetails}`;
+        }
+      } else {
+        message = locale === "ko"
+          ? `게시 실패: 0개 성공\n${result.error || "알 수 없는 오류"}`
+          : `Publish failed: 0 items\n${result.error || "Unknown error"}`;
+
+        if (result.errors && result.errors.length > 0) {
+          const errorDetails = result.errors.map(e => `- ${e.title || e.id}: ${e.error}`).join("\n");
+          message += `\n\n${errorDetails}`;
+        }
+      }
+
       alert(message);
       router.refresh();
     } catch (error) {

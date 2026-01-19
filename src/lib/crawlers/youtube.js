@@ -1,19 +1,12 @@
 import { google } from "googleapis";
 import { upsertCrawledContent, getExistingPlatformIds, logCrawl } from "./index.js";
-import { translateToKorean } from "./llm.js";
 
 /**
- * 제목을 한국어로 번역
+ * 제목을 한국어로 번역 (Claude 에이전트가 분석 시 처리)
  */
 async function translateTitle(title) {
-  // 이미 한국어인지 체크 (간단한 휴리스틱)
-  const hasKorean = /[\uAC00-\uD7AF]/.test(title);
-  if (hasKorean && title.length < 50) {
-    // 한국어가 포함되어 있고 짧으면 번역 불필요
-    return null;
-  }
-
-  return await translateToKorean(title);
+  // 번역은 Claude 에이전트가 분석 단계에서 처리
+  return null;
 }
 
 /**
@@ -43,8 +36,8 @@ export async function crawlYouTube({ limit } = {}) {
     const subscriptions = await getAllSubscriptions(youtube);
     logCrawl("youtube", `Found ${subscriptions.length} subscribed channels`);
 
-    // 2. 각 채널의 최근 12시간 영상 조회
-    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    // 2. 각 채널의 최근 24시간 영상 조회
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const allVideos = [];
 
     for (const sub of subscriptions) {
@@ -52,7 +45,7 @@ export async function crawlYouTube({ limit } = {}) {
       const channelTitle = sub.snippet.title;
 
       try {
-        const videos = await getChannelVideos(youtube, channelId, twelveHoursAgo);
+        const videos = await getChannelVideos(youtube, channelId, twentyFourHoursAgo);
         videos.forEach((video) => {
           video.channelTitle = channelTitle;
         });
@@ -62,7 +55,7 @@ export async function crawlYouTube({ limit } = {}) {
       }
     }
 
-    logCrawl("youtube", `Found ${allVideos.length} videos from last 12 hours`);
+    logCrawl("youtube", `Found ${allVideos.length} videos from last 24 hours`);
 
     // 3분 미만 영상 제외 (쇼츠 + 짧은 영상)
     const nonShortsVideos = allVideos.filter((video) => {
@@ -106,13 +99,12 @@ export async function crawlYouTube({ limit } = {}) {
         platform_id: video.id,
         title: video.snippet.title,
         translated_title: translatedTitle,
-        description: video.snippet.description?.slice(0, 500) || null,
         url: `https://www.youtube.com/watch?v=${video.id}`,
         author_name: video.channelTitle || video.snippet.channelTitle,
         author_url: `https://www.youtube.com/channel/${video.snippet.channelId}`,
         thumbnail_url: getBestThumbnail(video.snippet.thumbnails),
         video_duration: video.contentDetails?.duration || null,
-        published_at: video.snippet.publishedAt,
+        published_at: video.snippet.publishedAt,  // 업로드 시간
         status: "pending",
         raw_data: {
           viewCount: video.statistics?.viewCount,

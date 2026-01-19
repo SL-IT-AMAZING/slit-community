@@ -1,12 +1,12 @@
 import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
-import { upsertCrawledContent, logCrawl } from "./index.js";
-import { translateContent } from "./translate.js";
+import { upsertCrawledContent, logCrawl, getScreenshotDir } from "./index.js";
 
 const FEED_URL = "https://www.threads.com/";
 
 /**
  * Threads 크롤러
- * Playwright 스크린샷 방식
+ * 스크린샷 + 미디어 다운로드 방식
+ * 본문/메트릭 분석은 나중에 Claude로 수행
  * @param {Object} options
  * @param {number} options.limit - 최대 수집 개수 (기본: 20)
  */
@@ -21,10 +21,14 @@ export async function crawlThreads({ limit = 20 } = {}) {
     return { success: false, error: "No cookies found" };
   }
 
-  try {
-    const { screenshot, links, posts } = await crawlWithScreenshot("threads", FEED_URL, cookies);
+  // 스크린샷 저장 폴더 생성 (플랫폼/타임스탬프 구조)
+  const screenshotInfo = getScreenshotDir("threads");
+  logCrawl("threads", `Screenshots will be saved to: ${screenshotInfo.dir}`);
 
-    logCrawl("threads", `Captured screenshot, found ${links.length} links, ${posts.length} posts`);
+  try {
+    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot("threads", FEED_URL, cookies, screenshotInfo);
+
+    logCrawl("threads", `Feed screenshot captured, found ${links.length} links`);
 
     // Threads 포스트 링크 필터링 (threads.net 또는 threads.com)
     const postLinks = links.filter(
@@ -49,55 +53,52 @@ export async function crawlThreads({ limit = 20 } = {}) {
 
     if (uniquePosts.size === 0) {
       logCrawl("threads", "No posts found");
-      return { success: true, count: 0 };
+      return { success: true, count: 0, items: [] };
     }
 
-    // 데이터 변환 + 상세 정보 추출
+    // 각 포스트 스크린샷 + 미디어 다운로드
     const postEntries = Array.from(uniquePosts.entries()).slice(0, limit);
     const items = [];
 
-    logCrawl("threads", `Fetching details for ${postEntries.length} posts...`);
+    logCrawl("threads", `Processing ${postEntries.length} posts...`);
 
     for (const [postId, link] of postEntries) {
-      // URL에서 사용자명 추출 (threads.net 또는 threads.com)
+      // URL에서 사용자명 추출
       const userMatch = link.href.match(/threads\.(?:net|com)\/@([^/]+)/);
       const username = userMatch ? userMatch[1] : null;
 
-      // 각 포스트 상세 정보 가져오기
-      let postDetails = { content: "", metrics: {} };
+      // 스크린샷 + 미디어 다운로드
+      let postDetails = { screenshotUrl: null, downloadedMedia: [] };
       try {
-        postDetails = await fetchPostDetails("threads", link.href, cookies);
-        logCrawl("threads", `Fetched details for ${postId}: ${postDetails.content.slice(0, 50)}...`);
+        postDetails = await fetchPostDetails("threads", link.href, cookies, screenshotInfo);
+        logCrawl("threads", `Captured: ${postId} (${postDetails.downloadedMedia?.length || 0} media)`);
       } catch (err) {
-        logCrawl("threads", `Failed to fetch details for ${postId}: ${err.message}`);
+        logCrawl("threads", `Failed for ${postId}: ${err.message}`);
       }
-
-      // 본문 번역
-      const translatedContent = await translateContent(postDetails.content || link.text);
 
       items.push({
         platform: "threads",
         platform_id: postId,
-        title: postDetails.content?.slice(0, 200) || link.text?.slice(0, 200) || `Thread ${postId}`,
-        description: postDetails.content?.slice(0, 500) || link.text?.slice(0, 500) || null,
-        content_text: postDetails.content || link.text || null,
-        translated_content: translatedContent,
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://www.threads.net/@${username}` : null,
-        screenshot_url: screenshot,
-        status: "pending",
+        screenshot_url: postDetails.screenshotUrl,
+        status: "pending_analysis",
         raw_data: {
-          linkText: link.text,
-          content: postDetails.content,
-          likes: postDetails.metrics?.likes || 0,
-          replies: postDetails.metrics?.replies || 0,
-          reposts: postDetails.metrics?.reposts || 0,
+          feedScreenshot,
+          screenshotUrls: postDetails.screenshotUrls || [],
+          downloadedMedia: postDetails.downloadedMedia || [],
+          mediaUrls: postDetails.mediaUrls || [],
+          externalLinks: postDetails.externalLinks || [],
+          // Threads 네이티브 비디오
+          threadsVideoUrl: postDetails.threadsVideoUrl || null,
+          downloadedVideoUrl: postDetails.downloadedVideoUrl || null, // 로컬 다운로드된 비디오
+          hasVideo: postDetails.hasVideo || false,
         },
       });
 
-      // 너무 빠른 요청 방지
-      await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+      // 요청 간격
+      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
     }
 
     // DB에 저장
@@ -107,8 +108,8 @@ export async function crawlThreads({ limit = 20 } = {}) {
       throw error;
     }
 
-    logCrawl("threads", `Successfully saved ${savedData?.length || items.length} posts`);
-    return { success: true, count: savedData?.length || items.length };
+    logCrawl("threads", `Saved ${savedData?.length || items.length} posts`);
+    return { success: true, count: savedData?.length || items.length, items };
   } catch (error) {
     logCrawl("threads", `Error: ${error.message}`);
     return { success: false, error: error.message };

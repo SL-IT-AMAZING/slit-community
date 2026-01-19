@@ -34,7 +34,7 @@ function ThreadsIcon({ size = 16, className }) {
 
 const PLATFORMS = [
   { id: "youtube", icon: FaYoutube, label: "YouTube", labelKo: "YouTube", color: "#FF0000", type: "video" },
-  { id: "x", icon: FaXTwitter, label: "X", labelKo: "X", color: "#000000", type: "x-thread" },
+  { id: "x", icon: FaXTwitter, label: "X", labelKo: "트위터", color: "#000000", type: "x-thread" },
   { id: "linkedin", icon: FaLinkedin, label: "LinkedIn", labelKo: "LinkedIn", color: "#0077B5", type: "linkedin" },
   { id: "threads", icon: ThreadsIcon, label: "Threads", labelKo: "Threads", color: "#000000", type: "threads" },
   { id: "github", icon: FaGithub, label: "GitHub", labelKo: "GitHub", color: "#24292e", type: "open-source" },
@@ -120,9 +120,9 @@ export default function LatestContentSection({
 
               {/* 콘텐츠 가로 스크롤 */}
               {platformContent.length > 0 ? (
-                <div className="flex gap-4 overflow-x-auto pb-2">
+                <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0">
                   {platformContent.map((item) => (
-                    <div key={item.id} className="w-80 flex-shrink-0">
+                    <div key={item.id} className="w-[calc(100vw-32px)] flex-shrink-0 sm:w-80 md:w-96">
                       <SocialCardRenderer content={item} />
                     </div>
                   ))}
