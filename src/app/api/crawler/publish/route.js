@@ -86,6 +86,8 @@ export async function POST(request) {
           social_metadata: {
             ...item.raw_data,
             platform: item.platform,
+            // YouTube일 때 videoId 추가 (영상 재생에 필수)
+            ...(item.platform === "youtube" && { videoId: item.platform_id }),
             // 번역 정보도 저장 (카드에서 사용)
             translatedTitle: item.translated_title,
             translatedContent: item.translated_content,

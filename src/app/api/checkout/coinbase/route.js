@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+
+// Dynamic imports to avoid build-time evaluation
+async function getSession() {
+  const { getServerSession } = await import("next-auth");
+  const { getAuthOptions } = await import("@/lib/auth");
+  const authOptions = await getAuthOptions();
+  return getServerSession(authOptions);
+}
 
 export async function POST(request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
 
     if (!session?.user) {
       return NextResponse.json(

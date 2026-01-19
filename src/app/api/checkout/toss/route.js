@@ -1,11 +1,24 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { nanoid } from "nanoid";
+
+// Dynamic import to avoid build-time evaluation
+async function getSession() {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/lib/auth");
+  return getServerSession(authOptions);
+}
+
+function generateOrderId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 16; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 export async function POST(request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
 
     if (!session?.user) {
       return NextResponse.json(
@@ -24,7 +37,7 @@ export async function POST(request) {
     }
 
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const orderId = `order_${nanoid(16)}`;
+    const orderId = `order_${generateOrderId()}`;
 
     // Toss Payments requires client-side initialization
     // Return the payment configuration for the client

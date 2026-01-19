@@ -819,6 +819,31 @@ export const saveCrawledDigest = async (id, digestResult) => {
   }
 };
 
+// 크롤링 콘텐츠 번역 결과 저장
+export const updateCrawledTranslation = async (id, translation) => {
+  const supabase = await createClient();
+
+  const updateData = {};
+  if (translation.translated_title) {
+    updateData.translated_title = translation.translated_title;
+  }
+  if (translation.translated_content) {
+    updateData.translated_content = translation.translated_content;
+  }
+
+  if (Object.keys(updateData).length === 0) return;
+
+  const { error } = await supabase
+    .from("crawled_content")
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error saving crawled translation:", error);
+    throw error;
+  }
+};
+
 // 크롤링 콘텐츠 삭제
 export const deleteCrawledContent = async (ids) => {
   const supabase = await createClient();

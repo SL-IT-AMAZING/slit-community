@@ -18,15 +18,25 @@ const TYPE_TO_PLATFORM = {
   reddit: "reddit",
 };
 
+// YouTube URL에서 videoId 추출
+function extractVideoIdFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 // social_metadata에서 카드 props로 변환
 function mapToYouTubeProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
 
+  // videoId 추출: social_metadata.videoId 우선, 없으면 platform_id 또는 external_url에서 추출
+  const videoId = meta.videoId || content.platform_id || extractVideoIdFromUrl(content.external_url);
+
   return {
-    videoId: meta.videoId,
-    title: content.title,
-    description: content.description,
+    videoId,
+    title: content.title_en || content.title,
+    description: content.description_en || content.description,
     channelName: meta.channelName || author.name,
     channelAvatar: meta.channelAvatar || author.avatar,
     viewCount: meta.viewCount,
@@ -35,6 +45,9 @@ function mapToYouTubeProps(content) {
     publishedAt: content.published_at,
     externalUrl: content.external_url,
     thumbnailUrl: content.thumbnail_url,
+    // 번역 필드 추가
+    translatedTitle: meta.translatedTitle || content.title,
+    translatedDescription: meta.translatedContent || content.body || content.description,
   };
 }
 
@@ -89,10 +102,24 @@ function mapToXProps(content) {
 
 function mapToGitHubProps(content) {
   const meta = content.social_metadata || {};
+  const author = content.author_info || {};
+
+  // title이 "owner/repoName" 형식인 경우 분리
+  let repoOwner = meta.repoOwner;
+  let repoName = meta.repoName;
+  if (!repoOwner && content.title && content.title.includes('/')) {
+    const parts = content.title.split('/');
+    repoOwner = parts[0];
+    repoName = parts.slice(1).join('/');
+  }
+  // fallback: author_info에서 owner 가져오기
+  if (!repoOwner && author.name) {
+    repoOwner = author.name;
+  }
 
   return {
-    repoOwner: meta.repoOwner,
-    repoName: meta.repoName,
+    repoOwner,
+    repoName,
     description: content.description,
     language: meta.language,
     languageColor: meta.languageColor,
@@ -102,14 +129,15 @@ function mapToGitHubProps(content) {
     watchers: meta.watchers,
     topics: meta.topics || content.tags || [],
     lastUpdated: meta.lastUpdated,
-    readmeImageUrl: content.readme_image_url,
+    // README 스크린샷: 여러 소스에서 폴백
+    readmeImageUrl: content.readme_image_url || meta.readmeImageUrl || meta.screenshotUrl || content.thumbnail_url,
     externalUrl: content.external_url,
-    // 새로운 props (Trendshift + Star History + License)
-    trendshiftBadgeUrl: meta.trendshiftBadgeUrl,
-    trendshiftRank: meta.trendshiftRank,
-    trendshiftRepoId: meta.trendshiftRepoId,
+    // Trendshift + Star History (underscore → camelCase 매핑)
+    trendshiftBadgeUrl: meta.trendshiftBadgeUrl || meta.trendshift_badge_url,
+    trendshiftRank: meta.trendshiftRank || meta.trendshift_badge_rank,
+    trendshiftRepoId: meta.trendshiftRepoId || meta.trendshift_url,
     licenseType: meta.license,
-    starHistoryUrl: meta.starHistoryUrl,
+    starHistoryUrl: meta.starHistoryUrl || meta.star_history_screenshot,
   };
 }
 

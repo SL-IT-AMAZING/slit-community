@@ -172,7 +172,7 @@ function DetailDialog({ item, open, onClose, locale }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto sm:w-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             {/* 통합된 경우 여러 플랫폼 아이콘 표시 */}
@@ -1359,7 +1359,7 @@ export default function CrawlerList({ initialContent, locale }) {
 
       {/* Crawling Guide Dialog */}
       <Dialog open={showGuide} onOpenChange={setShowGuide}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto sm:w-auto">
           <DialogHeader>
             <DialogTitle>
               {locale === "ko" ? "로컬 크롤링 실행 가이드" : "Local Crawling Guide"}

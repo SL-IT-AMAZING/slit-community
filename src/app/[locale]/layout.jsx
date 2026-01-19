@@ -16,6 +16,13 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+};
+
 export async function generateMetadata({ params }) {
   const { locale } = await params;
 

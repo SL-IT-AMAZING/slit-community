@@ -12,8 +12,9 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["next-auth"],
   experimental: {
-    serverComponentsExternalPackages: ["cheerio"],
+    serverComponentsExternalPackages: ["cheerio", "@supabase/supabase-js"],
   },
 };
 

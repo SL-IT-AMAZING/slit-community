@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 
 function getStripe() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -11,6 +9,14 @@ function getStripe() {
   return new Stripe(secretKey, {
     apiVersion: "2023-10-16",
   });
+}
+
+// Dynamic imports to avoid build-time evaluation
+async function getSession() {
+  const { getServerSession } = await import("next-auth");
+  const { getAuthOptions } = await import("@/lib/auth");
+  const authOptions = await getAuthOptions();
+  return getServerSession(authOptions);
 }
 
 export async function POST(request) {
@@ -24,7 +30,7 @@ export async function POST(request) {
       );
     }
 
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
 
     if (!session?.user) {
       return NextResponse.json(

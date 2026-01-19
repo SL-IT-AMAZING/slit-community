@@ -302,7 +302,7 @@ export default async function HomePage({ params }) {
   try {
     [featuredContent, latestContent] = await Promise.all([
       fetchRecommendedContent(6).catch(() => []),
-      fetchLatestByPlatform({ limitCount: 12 }).catch(() => []),
+      fetchLatestByPlatform({ limitCount: 100 }).catch(() => []),
     ]);
   } catch (error) {
     console.error("Error fetching content:", error);

@@ -114,3 +114,15 @@ code {
     @apply bg-background text-foreground;
   }
 }
+
+
+/* 가로 스크롤바 숨김 유틸리티 */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
