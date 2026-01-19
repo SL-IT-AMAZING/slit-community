@@ -1,5 +1,12 @@
 import * as cheerio from "cheerio";
-import { upsertCrawledContent, logCrawl } from "./index.js";
+import { upsertWithRankingMerge, logCrawl } from "./index.js";
+
+// trendingRange를 기간명으로 변환
+const RANGE_TO_PERIOD = {
+  1: "daily",
+  7: "weekly",
+  30: "monthly",
+};
 
 const BASE_URL = "https://trendshift.io";
 
@@ -171,6 +178,9 @@ export async function crawlTrendshift({ limit = 25, trendingRange, language } = 
       const rankBadge = $card.find(".bg-amber-300, .bg-secondary").first();
       const rank = parseInt(rankBadge.text().trim(), 10) || i + 1;
 
+      // 기간명 결정 (trendingRange가 있으면 해당 기간, 없으면 weekly 기본)
+      const period = trendingRange ? RANGE_TO_PERIOD[trendingRange] || "weekly" : "weekly";
+
       repos.push({
         platform: "trendshift",
         platform_id: `ts-${repoId}`,
@@ -180,12 +190,14 @@ export async function crawlTrendshift({ limit = 25, trendingRange, language } = 
         author_name: owner,
         author_url: `https://github.com/${owner}`,
         thumbnail_url: `https://opengraph.githubassets.com/1/${fullName}`,
-        status: "pending",
+        status: "pending_analysis",
+        ranking: {
+          [period]: rank,  // { daily: 5 } or { weekly: 3 } or { monthly: 1 }
+        },
         raw_data: {
           language,
           stars: Math.round(stars),
           forks: Math.round(forks),
-          rank,
           trendshiftUrl: `${BASE_URL}${repoHref}`,
           badge_url: `https://trendshift.io/api/badge/repositories/${repoId}`,
         },
@@ -198,8 +210,8 @@ export async function crawlTrendshift({ limit = 25, trendingRange, language } = 
       return { success: true, count: 0 };
     }
 
-    // DB에 저장
-    const { data: savedData, error } = await upsertCrawledContent(repos);
+    // DB에 저장 (랭킹 병합 지원)
+    const { data: savedData, error } = await upsertWithRankingMerge(repos);
 
     if (error) {
       throw error;

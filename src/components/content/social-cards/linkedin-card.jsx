@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
 import { FaLinkedin, FaThumbsUp, FaComment, FaShare } from "react-icons/fa6";
 
@@ -26,6 +27,17 @@ export default function LinkedInCard({
   className,
 }) {
   const locale = useLocale();
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef(null);
+
+  const MAX_HEIGHT = 120; // 최대 높이 (px)
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflowing(contentRef.current.scrollHeight > MAX_HEIGHT);
+    }
+  }, [content, locale]);
 
   return (
     <BaseSocialCard
@@ -63,9 +75,36 @@ export default function LinkedInCard({
       </div>
 
       {/* Content */}
-      <p className="mt-3 line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed">
-        {content}
-      </p>
+      <div className="relative mt-3">
+        <p
+          ref={contentRef}
+          className={`whitespace-pre-wrap break-words text-sm leading-relaxed transition-all ${
+            !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
+          }`}
+        >
+          {content}
+        </p>
+        {/* 그라데이션 + 더보기 버튼 */}
+        {isOverflowing && !expanded && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-8">
+            <button
+              onClick={() => setExpanded(true)}
+              className="min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
+            >
+              {locale === "ko" ? "더보기" : "Show more"}
+            </button>
+          </div>
+        )}
+        {/* 접기 버튼 */}
+        {expanded && isOverflowing && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="mt-2 min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
+          >
+            {locale === "ko" ? "접기" : "Show less"}
+          </button>
+        )}
+      </div>
 
       {/* Article Preview */}
       {articlePreview && (
@@ -95,7 +134,7 @@ export default function LinkedInCard({
       )}
 
       {/* Metrics */}
-      <div className="mt-3 flex items-center gap-4 border-t pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 sm:gap-4">
         <MetricItem
           icon={FaThumbsUp}
           value={likeCount}

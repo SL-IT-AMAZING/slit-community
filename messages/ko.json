@@ -109,7 +109,7 @@
     "news": "뉴스",
     "video": "비디오",
     "open-source": "오픈소스",
-    "x-thread": "X 쓰레드",
+    "x-thread": "트위터",
     "linkedin": "LinkedIn",
     "threads": "Threads",
     "reddit": "Reddit",
@@ -119,7 +119,7 @@
   "platforms": {
     "all": "전체",
     "youtube": "YouTube",
-    "x": "X",
+    "x": "트위터",
     "linkedin": "LinkedIn",
     "threads": "Threads",
     "github": "GitHub",

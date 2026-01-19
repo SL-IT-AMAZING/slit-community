@@ -1,16 +1,16 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
-import { FaXTwitter, FaHeart, FaRetweet, FaComment } from "react-icons/fa6";
+import { FaXTwitter, FaHeart, FaRetweet } from "react-icons/fa6";
 
 import BaseSocialCard, {
   AuthorInfo,
   MetricItem,
+  MediaGrid,
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
-import TranslateButton from "../translate-button";
-import { cn } from "@/lib/utils";
 
 export default function XCard({
   content,
@@ -27,17 +27,24 @@ export default function XCard({
   metricsHistory = [],
   contentId,
   translatedContent,
+  hasVideo = false,
+  youtubeEmbedUrl = null,
+  youtubeVideoId = null,
+  twitterVideoUrl = null,
   className,
 }) {
   const locale = useLocale();
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef(null);
 
-  // 미디어 그리드 레이아웃 결정
-  const getMediaGridClass = (count) => {
-    if (count === 1) return "grid-cols-1";
-    if (count === 2) return "grid-cols-2";
-    if (count === 3) return "grid-cols-2";
-    return "grid-cols-2";
-  };
+  const MAX_HEIGHT = 120; // 최대 높이 (px)
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflowing(contentRef.current.scrollHeight > MAX_HEIGHT);
+    }
+  }, [content, translatedContent, locale]);
 
   return (
     <BaseSocialCard
@@ -54,54 +61,46 @@ export default function XCard({
         verified={verified}
       />
 
-      {/* Content */}
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
-        {content}
-      </p>
-
-      {/* Translate Button */}
-      {content && (
-        <TranslateButton
-          text={content}
-          translatedText={translatedContent}
-          contentId={contentId}
-          field="content"
-          className="mt-2"
-        />
-      )}
-
-      {/* Media Grid */}
-      {mediaUrls && mediaUrls.length > 0 && (
-        <div
-          className={cn(
-            "mt-3 grid gap-0.5 overflow-hidden rounded-xl border-2 border-border",
-            getMediaGridClass(mediaUrls.length)
-          )}
+      {/* Content - locale에 따라 분기 */}
+      <div className="relative mt-3">
+        <p
+          ref={contentRef}
+          className={`whitespace-pre-wrap break-words text-sm leading-relaxed transition-all ${
+            !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
+          }`}
         >
-          {mediaUrls.slice(0, 4).map((url, i) => (
-            <div
-              key={i}
-              className={cn(
-                "relative aspect-square overflow-hidden",
-                mediaUrls.length === 1 && "aspect-video",
-                mediaUrls.length === 3 && i === 0 && "row-span-2 aspect-auto"
-              )}
+          {(locale === "ko" && translatedContent ? translatedContent : content)?.replace(/\\n/g, '\n')}
+        </p>
+        {/* 그라데이션 + 더보기 버튼 */}
+        {isOverflowing && !expanded && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-8">
+            <button
+              onClick={() => setExpanded(true)}
+              className="min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
             >
-              <img
-                src={url}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-              {mediaUrls.length > 4 && i === 3 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-lg font-bold text-white">
-                  +{mediaUrls.length - 4}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              {locale === "ko" ? "더보기" : "Show more"}
+            </button>
+          </div>
+        )}
+        {/* 접기 버튼 */}
+        {expanded && isOverflowing && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="mt-2 min-h-[44px] px-2 py-1 text-sm font-medium text-primary hover:underline"
+          >
+            {locale === "ko" ? "접기" : "Show less"}
+          </button>
+        )}
+      </div>
+
+      {/* Media Grid (비디오 + 사진 통합) */}
+      <MediaGrid
+        mediaUrls={mediaUrls}
+        videoUrl={twitterVideoUrl}
+        youtubeEmbedUrl={youtubeEmbedUrl}
+        youtubeVideoId={youtubeVideoId}
+        externalUrl={externalUrl}
+      />
 
       {/* Date */}
       {publishedAt && (
@@ -111,24 +110,18 @@ export default function XCard({
       )}
 
       {/* Metrics */}
-      <div className="mt-3 flex items-center gap-6 border-t pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3 sm:gap-6">
         <MetricItem
-          icon={FaComment}
-          value={replyCount}
-          label="Replies"
-          className="hover:text-blue-500"
+          icon={FaHeart}
+          value={likeCount}
+          label="Likes"
+          className="hover:text-red-500"
         />
         <MetricItem
           icon={FaRetweet}
           value={retweetCount}
           label="Retweets"
           className="hover:text-green-500"
-        />
-        <MetricItem
-          icon={FaHeart}
-          value={likeCount}
-          label="Likes"
-          className="hover:text-red-500"
         />
       </div>
 

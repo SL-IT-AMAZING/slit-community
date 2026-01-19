@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +28,28 @@ import {
   FaNewspaper,
   FaVideo,
   FaCode,
+  FaYoutube,
+  FaReddit,
+  FaXTwitter,
+  FaLinkedin,
+  FaThreads,
+  FaGithub,
 } from "react-icons/fa6";
 
 import { createClient } from "@/lib/supabase/client";
+
+const PLATFORMS = [
+  { id: "all", name: "All", nameKo: "전체" },
+  { id: "youtube", name: "YouTube", nameKo: "유튜브", icon: FaYoutube, color: "text-red-500" },
+  { id: "reddit", name: "Reddit", nameKo: "레딧", icon: FaReddit, color: "text-orange-500" },
+  { id: "x", name: "X", nameKo: "X", icon: FaXTwitter, color: "text-foreground" },
+  { id: "threads", name: "Threads", nameKo: "쓰레드", icon: FaThreads, color: "text-foreground" },
+  { id: "github", name: "GitHub", nameKo: "깃허브", icon: FaGithub, color: "text-foreground" },
+  { id: "linkedin", name: "LinkedIn", nameKo: "링크드인", icon: FaLinkedin, color: "text-blue-600" },
+  { id: "video", name: "Video", nameKo: "비디오", icon: FaVideo, color: "text-purple-500" },
+  { id: "open-source", name: "Open Source", nameKo: "오픈소스", icon: FaCode, color: "text-green-500" },
+  { id: "article", name: "Article", nameKo: "아티클", icon: FaNewspaper, color: "text-blue-500" },
+];
 
 function ContentTypeIcon({ type }) {
   switch (type) {
@@ -46,15 +66,75 @@ export default function AdminContentList({ initialContent, locale }) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contentToDelete, setContentToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState("all");
 
   const filteredContent = content.filter((item) => {
     const title = locale === "ko" ? item.title : item.title_en || item.title;
-    return title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = title?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // SNS 플랫폼 필터링
+    const platform = item.social_metadata?.platform || item.type;
+    const matchesPlatform = selectedPlatform === "all" || platform === selectedPlatform;
+
+    return matchesSearch && matchesPlatform;
   });
 
+  // 체크박스 토글
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // 전체 선택/해제
+  const selectAll = () => {
+    if (selectedIds.size === filteredContent.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredContent.map((item) => item.id)));
+    }
+  };
+
+  // 일괄 삭제
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("content")
+        .delete()
+        .in("id", Array.from(selectedIds));
+
+      if (error) {
+        console.error("Delete error:", error);
+        alert(locale === "ko" ? "삭제에 실패했습니다." : "Failed to delete.");
+        return;
+      }
+
+      setContent((prev) => prev.filter((item) => !selectedIds.has(item.id)));
+      setSelectedIds(new Set());
+      setDeleteDialogOpen(false);
+      setContentToDelete(null);
+      router.refresh();
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert(locale === "ko" ? "삭제에 실패했습니다." : "Failed to delete.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // 단일 삭제
   const handleDelete = async () => {
     if (!contentToDelete) return;
 
@@ -82,6 +162,12 @@ export default function AdminContentList({ initialContent, locale }) {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // 일괄 삭제 다이얼로그 열기
+  const openBulkDeleteDialog = () => {
+    setContentToDelete(null);
+    setDeleteDialogOpen(true);
   };
 
   const openDeleteDialog = (item) => {
@@ -131,6 +217,58 @@ export default function AdminContentList({ initialContent, locale }) {
         />
       </div>
 
+      {/* Platform Filter Tabs */}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {PLATFORMS.map((platform) => (
+            <button
+              key={platform.id}
+              onClick={() => setSelectedPlatform(platform.id)}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                selectedPlatform === platform.id
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {platform.icon && <platform.icon size={14} className={platform.color} />}
+              {locale === "ko" ? platform.nameKo : platform.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Select All Checkbox */}
+      <div className="mb-4 flex items-center gap-2">
+        <Checkbox
+          checked={selectedIds.size === filteredContent.length && filteredContent.length > 0}
+          onCheckedChange={selectAll}
+        />
+        <span className="text-sm text-muted-foreground">
+          {locale === "ko" ? "전체 선택" : "Select All"}
+        </span>
+      </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg bg-muted p-3">
+          <span className="text-sm text-muted-foreground">
+            {locale === "ko"
+              ? `${selectedIds.size}개 선택됨`
+              : `${selectedIds.size} selected`}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={openBulkDeleteDialog}
+            disabled={isDeleting}
+            className="gap-2 text-destructive hover:bg-destructive/10"
+          >
+            <FaTrash size={12} />
+            {locale === "ko" ? "선택 삭제" : "Delete Selected"}
+          </Button>
+        </div>
+      )}
+
       {/* Content List */}
       <div className="space-y-4">
         {filteredContent.length === 0 ? (
@@ -143,9 +281,18 @@ export default function AdminContentList({ initialContent, locale }) {
           </Card>
         ) : (
           filteredContent.map((item) => (
-            <Card key={item.id} className="transition-shadow hover:shadow-md">
+            <Card
+              key={item.id}
+              className={`transition-shadow hover:shadow-md ${
+                selectedIds.has(item.id) ? "ring-2 ring-primary" : ""
+              }`}
+            >
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
+                  <Checkbox
+                    checked={selectedIds.has(item.id)}
+                    onCheckedChange={() => toggleSelect(item.id)}
+                  />
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                     <ContentTypeIcon type={item.type} />
                   </div>
@@ -226,9 +373,15 @@ export default function AdminContentList({ initialContent, locale }) {
               {locale === "ko" ? "콘텐츠 삭제" : "Delete Content"}
             </DialogTitle>
             <DialogDescription>
-              {locale === "ko"
-                ? `"${contentToDelete?.title}"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
-                : `Are you sure you want to delete "${contentToDelete?.title}"? This action cannot be undone.`}
+              {contentToDelete ? (
+                locale === "ko"
+                  ? `"${contentToDelete.title}"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+                  : `Are you sure you want to delete "${contentToDelete.title}"? This action cannot be undone.`
+              ) : (
+                locale === "ko"
+                  ? `${selectedIds.size}개의 항목을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+                  : `Are you sure you want to delete ${selectedIds.size} items? This action cannot be undone.`
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -241,7 +394,7 @@ export default function AdminContentList({ initialContent, locale }) {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
+              onClick={contentToDelete ? handleDelete : handleBulkDelete}
               disabled={isDeleting}
             >
               {isDeleting

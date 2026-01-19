@@ -1,74 +1,23 @@
 import { upsertCrawledContent, logCrawl } from "./index.js";
-import { analyzeImage } from "./llm.js";
+import { parseRelativeTime } from "./llm.js";
 
 /**
- * LinkedIn 스크린샷 Vision 분석 크롤러
- * 스크린샷 이미지를 업로드하면 Gemini Vision API로 분석하여 콘텐츠 추출
+ * LinkedIn 스크린샷 크롤러
+ * 분석은 Claude 에이전트가 직접 처리
  */
 
-const VISION_PROMPT = `이 LinkedIn 포스트 스크린샷을 분석해주세요. 다음 정보를 JSON 형식으로 추출해주세요:
-
-{
-  "authorName": "작성자 이름",
-  "authorTitle": "작성자 직함/소속",
-  "authorAvatarDescription": "프로필 사진 설명 (이미지이므로 URL 없음)",
-  "content": "포스트 본문 전체 텍스트",
-  "publishedAt": "게시 시간 (예: '2시간 전', '3일 전' 등 표시된 그대로)",
-  "likeCount": 숫자 (좋아요 수, 없으면 0),
-  "reactionCount": 숫자 (반응 수/파감수, 없으면 0),
-  "commentCount": 숫자 (댓글 수, 없으면 0),
-  "repostCount": 숫자 (리포스트 수, 없으면 0),
-  "hasMedia": boolean (이미지/동영상 포함 여부),
-  "mediaDescription": "첨부된 미디어 설명 (없으면 null)"
-}
-
-중요:
-- 반드시 유효한 JSON만 출력해주세요
-- 숫자는 문자열이 아닌 숫자로 반환해주세요
-- 없는 정보는 null 또는 0으로 표시해주세요
-- 본문 내용은 줄바꿈을 \\n으로 표시해주세요`;
-
 /**
- * LinkedIn 스크린샷을 Vision API로 분석
+ * LinkedIn 스크린샷 분석 (Claude 에이전트가 처리)
  * @param {string} imageUrl - 스크린샷 이미지 URL
  * @param {string} postUrl - LinkedIn 포스트 URL (optional)
  * @returns {Promise<Object>} 분석 결과
  */
 export async function analyzeLinkedInScreenshot(imageUrl, postUrl = null) {
-  logCrawl("linkedin", `Analyzing screenshot: ${imageUrl.substring(0, 50)}...`);
-
-  try {
-    const resultText = await analyzeImage(imageUrl, VISION_PROMPT);
-
-    if (!resultText) {
-      throw new Error("GEMINI_API_KEY is not configured");
-    }
-
-    // JSON 파싱 시도
-    let parsedResult;
-    try {
-      // JSON 블록 추출 (마크다운 코드 블록 처리)
-      const jsonMatch = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
-                        resultText.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
-      parsedResult = JSON.parse(jsonStr);
-    } catch {
-      logCrawl("linkedin", "Failed to parse JSON, using raw result");
-      parsedResult = { content: resultText, parseError: true };
-    }
-
-    return {
-      success: true,
-      data: parsedResult,
-      postUrl,
-    };
-  } catch (error) {
-    logCrawl("linkedin", `Vision analysis error: ${error.message}`);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
+  logCrawl("linkedin", "LinkedIn 분석은 Claude 에이전트가 처리합니다.");
+  return {
+    success: false,
+    error: "LinkedIn 분석은 Claude 에이전트가 처리합니다. /ownuun_linkedin 사용",
+  };
 }
 
 /**
@@ -108,7 +57,7 @@ export async function saveLinkedInContent(analysisResult, screenshotUrl, postUrl
     thumbnail_url: null,
     screenshot_url: screenshotUrl,
     media_urls: data.hasMedia ? [] : [], // 실제 URL 없음
-    published_at: null, // 상대 시간은 그대로 raw_data에 저장
+    published_at: data.publishedAt ? parseRelativeTime(data.publishedAt) : null,
     status: "pending",
     raw_data: {
       likeCount: data.likeCount || 0,

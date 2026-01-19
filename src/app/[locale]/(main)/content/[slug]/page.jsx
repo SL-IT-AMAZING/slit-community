@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import ContentDetail from "./content-detail";
 
 export async function generateMetadata({ params }) {
-  const content = await fetchContentBySlug(params.slug);
+  // URL 인코딩된 한글 slug 디코딩
+  const decodedSlug = decodeURIComponent(params.slug);
+  const content = await fetchContentBySlug(decodedSlug);
   const locale = await getLocale();
 
   if (!content) {
@@ -26,7 +28,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ContentDetailPage({ params }) {
-  const { slug } = params;
+  // URL 인코딩된 한글 slug 디코딩
+  const slug = decodeURIComponent(params.slug);
   const locale = await getLocale();
 
   const content = await fetchContentBySlug(slug);
@@ -57,6 +60,8 @@ export default async function ContentDetailPage({ params }) {
     thumbnailUrl: content.thumbnail_url,
     externalUrl: content.external_url,
     publishedAt: content.published_at,
+    // 소셜 미디어 메타데이터 (다운로드된 미디어 포함)
+    socialMetadata: content.social_metadata,
   };
 
   return <ContentDetail content={formattedContent} locale={locale} />;

@@ -26,6 +26,7 @@ import {
 } from "react-icons/fa6";
 
 import { createClient } from "@/lib/supabase/client";
+import { MediaGrid } from "@/components/content/social-cards/base-social-card";
 
 function ContentTypeIcon({ type, size = 16 }) {
   switch (type) {
@@ -107,30 +108,30 @@ export default function ContentDetail({ content, locale }) {
   // Premium content gate
   if (content.isPremium && !session?.user?.isPremium) {
     return (
-      <div className="container max-w-4xl py-8">
+      <div className="container max-w-4xl px-4 py-4 md:px-6 md:py-8">
         {/* Back button */}
-        <Link href="/content" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/content" className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6">
           <FaArrowLeft size={14} />
           {t("content.backToList")}
         </Link>
 
         {/* Title */}
-        <h1 className="mb-4 font-cera text-3xl font-bold md:text-4xl">
+        <h1 className="mb-4 font-cera text-2xl font-bold sm:text-3xl md:text-4xl">
           {displayTitle}
         </h1>
 
         {/* Premium Gate Card */}
-        <Card className="mt-8 border-yellow-500/50 bg-yellow-500/5">
-          <CardContent className="flex flex-col items-center py-16 text-center">
-            <FaCrown size={48} className="mb-4 text-yellow-500" />
-            <h2 className="mb-2 text-2xl font-bold">
+        <Card className="mt-6 border-yellow-500/50 bg-yellow-500/5 md:mt-8">
+          <CardContent className="flex flex-col items-center py-8 text-center md:py-16">
+            <FaCrown size={40} className="mb-4 text-yellow-500 sm:h-12 sm:w-12" />
+            <h2 className="mb-2 text-xl font-bold md:text-2xl">
               {t("content.premiumTitle")}
             </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
+            <p className="mb-6 max-w-md text-sm text-muted-foreground md:text-base">
               {t("content.premiumGateDescription")}
             </p>
             <Link href="/premium">
-              <Button size="lg">
+              <Button size="lg" className="min-h-[44px]">
                 <FaCrown className="mr-2" size={16} />
                 {t("content.subscribeToPremium")}
               </Button>
@@ -142,17 +143,17 @@ export default function ContentDetail({ content, locale }) {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container max-w-4xl px-4 py-4 md:px-6 md:py-8">
       {/* Back button */}
-      <Link href="/content" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/content" className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6">
         <FaArrowLeft size={14} />
         {t("content.backToList")}
       </Link>
 
       {/* Header */}
-      <header className="mb-8">
+      <header className="mb-6 md:mb-8">
         {/* Badges */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2 md:mb-4">
           <Badge variant="outline" className="gap-1">
             <ContentTypeIcon type={content.type} size={12} />
             {t(`contentTypes.${content.type}`)}
@@ -169,35 +170,36 @@ export default function ContentDetail({ content, locale }) {
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 font-cera text-3xl font-bold md:text-4xl">
+        <h1 className="mb-3 font-cera text-2xl font-bold sm:text-3xl md:mb-4 md:text-4xl">
           {displayTitle}
         </h1>
 
         {/* Description */}
-        <p className="mb-6 text-lg text-muted-foreground">
+        <p className="mb-4 text-base text-muted-foreground md:mb-6 md:text-lg">
           {displayDescription}
         </p>
 
         {/* Meta info */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:gap-4 sm:text-sm">
           {formattedDate && (
             <span className="flex items-center gap-1">
-              <FaCalendar size={14} />
+              <FaCalendar size={12} className="sm:h-3.5 sm:w-3.5" />
               {formattedDate}
             </span>
           )}
           <span className="flex items-center gap-1">
-            <FaEye size={14} />
+            <FaEye size={12} className="sm:h-3.5 sm:w-3.5" />
             {content.viewCount.toLocaleString()} {t("content.views")}
           </span>
         </div>
 
         {/* Action buttons */}
-        <div className="mt-6 flex items-center gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center">
           <Button
             variant={isBookmarked ? "default" : "outline"}
             size="sm"
             onClick={handleBookmark}
+            className="min-h-[44px] w-full justify-center sm:w-auto"
           >
             {isBookmarked ? (
               <FaBookmark className="mr-2" size={14} />
@@ -206,13 +208,13 @@ export default function ContentDetail({ content, locale }) {
             )}
             {isBookmarked ? t("content.bookmarked") : t("content.bookmarkButton")}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleShare}>
+          <Button variant="outline" size="sm" onClick={handleShare} className="min-h-[44px] w-full justify-center sm:w-auto">
             <FaShare className="mr-2" size={14} />
             {t("content.share")}
           </Button>
           {content.externalUrl && (
-            <a href={content.externalUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm">
+            <a href={content.externalUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="min-h-[44px] w-full justify-center sm:w-auto">
                 <FaLink className="mr-2" size={14} />
                 {t("content.viewOriginal")}
               </Button>
@@ -221,19 +223,43 @@ export default function ContentDetail({ content, locale }) {
         </div>
       </header>
 
-      {/* Thumbnail */}
-      {content.thumbnailUrl && (
-        <div className="mb-8 overflow-hidden rounded-lg">
-          <img
-            src={content.thumbnailUrl}
-            alt={displayTitle}
-            className="h-auto w-full object-cover"
-          />
-        </div>
-      )}
+      {/* Media Grid - 실제 다운로드된 미디어 표시 (메인화면과 동일) */}
+      {(() => {
+        // 미디어 URL 추출 (downloadedMedia 우선, 없으면 thumbnailUrl 사용)
+        const mediaUrls = content.socialMetadata?.downloadedMedia || [];
+        const videoUrl = content.socialMetadata?.downloadedVideo?.[0] || null;
+
+        // 미디어가 있으면 MediaGrid 사용
+        if (mediaUrls.length > 0 || videoUrl) {
+          return (
+            <div className="mb-8">
+              <MediaGrid
+                mediaUrls={mediaUrls}
+                videoUrl={videoUrl}
+                externalUrl={content.externalUrl}
+              />
+            </div>
+          );
+        }
+
+        // 미디어가 없고 thumbnailUrl만 있으면 단일 이미지 표시
+        if (content.thumbnailUrl) {
+          return (
+            <div className="mb-8 overflow-hidden rounded-lg">
+              <img
+                src={content.thumbnailUrl}
+                alt={displayTitle}
+                className="h-auto w-full object-cover"
+              />
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Content body */}
-      <article className="prose prose-neutral max-w-none dark:prose-invert prose-headings:font-cera prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-pre:bg-muted prose-pre:text-foreground">
+      <article className="prose prose-sm prose-neutral max-w-none dark:prose-invert md:prose-base prose-headings:font-cera prose-h1:text-xl prose-h2:text-lg prose-h3:text-base md:prose-h1:text-2xl md:prose-h2:text-xl md:prose-h3:text-lg prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-table:max-w-full">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {displayBody || ""}
         </ReactMarkdown>

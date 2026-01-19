@@ -41,21 +41,49 @@ function mapToYouTubeProps(content) {
 function mapToXProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
+  const digest = meta.digest_result || {};
+
+  // 다운로드된 실제 미디어만 표시 (스크린샷 제외)
+  // twitterVideoUrl 또는 youtubeEmbedUrl이 있으면 thumbnail_url 폴백 불필요
+  let mediaUrls = [];
+  if (meta.downloadedMedia && meta.downloadedMedia.length > 0) {
+    mediaUrls = meta.downloadedMedia;
+  }
+
+  // 작성자 이름 추출: title 형식이 "Lee Robinson - 요약" 인 경우 첫 부분 사용
+  let displayName = author.name;
+  if (content.title && content.title.includes(' - ')) {
+    const namePart = content.title.split(' - ')[0];
+    // @로 시작하지 않으면 이름으로 사용
+    if (!namePart.startsWith('@')) {
+      displayName = namePart;
+    }
+  }
+  // 이름이 @로 시작하면 @ 제거해서 표시
+  if (displayName?.startsWith('@')) {
+    displayName = displayName.slice(1);
+  }
 
   return {
     content: content.body_en || content.description_en || content.body,
-    authorName: author.name,
-    authorHandle: meta.authorHandle || author.handle,
+    authorName: displayName,
+    authorHandle: digest.author_handle || meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
     verified: author.verified,
-    likeCount: meta.likeCount,
-    retweetCount: meta.retweetCount,
-    replyCount: meta.replyCount,
-    publishedAt: content.published_at,
-    mediaUrls: meta.mediaUrls || [],
+    likeCount: digest.metrics?.likes || meta.likeCount,
+    retweetCount: digest.metrics?.reposts || digest.metrics?.retweets || meta.retweetCount,
+    replyCount: digest.metrics?.replies || meta.replyCount,
+    publishedAt: content.published_at || content.created_at,
+    mediaUrls,
     externalUrl: content.external_url,
     contentId: content.id,
     translatedContent: meta.translatedContent || content.body,
+    hasVideo: meta.hasVideo || false,
+    // YouTube 임베드 URL
+    youtubeEmbedUrl: meta.youtubeEmbedUrl || null,
+    youtubeVideoId: meta.youtubeVideoId || null,
+    // Twitter 네이티브 비디오 URL (로컬 다운로드된 비디오 우선)
+    twitterVideoUrl: meta.downloadedVideoUrl || meta.twitterVideoUrl || null,
   };
 }
 
@@ -129,21 +157,32 @@ function mapToLinkedInProps(content) {
 function mapToThreadsProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
+  const digest = meta.digest_result || {};
+
+  // 다운로드된 실제 미디어만 표시 (스크린샷 제외)
+  // twitterVideoUrl 또는 youtubeEmbedUrl이 있으면 thumbnail_url 폴백 불필요
+  let mediaUrls = [];
+  if (meta.downloadedMedia && meta.downloadedMedia.length > 0) {
+    mediaUrls = meta.downloadedMedia;
+  }
 
   return {
     content: content.body_en || content.description_en || content.body,
     authorName: author.name,
-    authorHandle: meta.authorHandle || author.handle,
+    authorHandle: digest.author_handle || meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
     verified: author.verified,
-    likeCount: meta.likeCount,
-    replyCount: meta.replyCount,
-    repostCount: meta.repostCount,
-    publishedAt: content.published_at,
-    mediaUrls: meta.mediaUrls || [],
+    likeCount: digest.metrics?.likes || meta.likeCount,
+    replyCount: digest.metrics?.replies || meta.replyCount,
+    repostCount: digest.metrics?.reposts || meta.repostCount,
+    publishedAt: content.published_at || content.created_at,
+    mediaUrls,
     externalUrl: content.external_url,
     contentId: content.id,
     translatedContent: meta.translatedContent || content.body,
+    hasVideo: meta.hasVideo || false,
+    // Threads 네이티브 비디오 URL (로컬 다운로드된 비디오 우선)
+    threadsVideoUrl: meta.downloadedVideoUrl || meta.threadsVideoUrl || null,
   };
 }
 

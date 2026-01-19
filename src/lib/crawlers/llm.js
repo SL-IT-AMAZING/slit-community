@@ -1,128 +1,82 @@
 /**
- * LLM 유틸리티 - Google Gemini API 사용
- * 무료 티어: 일 1,500 요청
+ * LLM 유틸리티
+ * 본문 분석은 Claude 에이전트가 직접 처리
  */
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logCrawl } from "./index.js";
 
-let genAI = null;
+/**
+ * 상대 시간 문자열을 ISO 시간으로 변환
+ * @param {string} relativeTime - "2h", "1d", "Jan 14" 등
+ * @returns {string} ISO 8601 형식 시간
+ */
+export function parseRelativeTime(relativeTime) {
+  if (!relativeTime) return new Date().toISOString();
 
-function getClient() {
-  if (!genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return null;
+  const now = new Date();
+  const str = relativeTime.toString().toLowerCase().trim();
+
+  // "just now" 처리
+  if (str === "just now" || str === "now" || str === "방금") {
+    return now.toISOString();
+  }
+
+  // 숫자+단위 패턴 (예: 2h, 3d, 5m, 1w, 2mo)
+  const timeMatch = str.match(/^(\d+)\s*(s|sec|m|min|h|hr|d|w|mo|y)(?:s|ours?|inutes?|ays?|eeks?|onths?|ears?)?$/i);
+  if (timeMatch) {
+    const value = parseInt(timeMatch[1]);
+    const unit = timeMatch[2].toLowerCase();
+
+    switch (unit) {
+      case 's':
+      case 'sec':
+        now.setSeconds(now.getSeconds() - value);
+        break;
+      case 'm':
+      case 'min':
+        now.setMinutes(now.getMinutes() - value);
+        break;
+      case 'h':
+      case 'hr':
+        now.setHours(now.getHours() - value);
+        break;
+      case 'd':
+        now.setDate(now.getDate() - value);
+        break;
+      case 'w':
+        now.setDate(now.getDate() - (value * 7));
+        break;
+      case 'mo':
+        now.setMonth(now.getMonth() - value);
+        break;
+      case 'y':
+        now.setFullYear(now.getFullYear() - value);
+        break;
     }
-    genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return genAI;
-}
-
-/**
- * 텍스트 번역 (한글로)
- */
-export async function translateToKorean(text) {
-  const client = getClient();
-  if (!client) {
-    logCrawl("llm", "GEMINI_API_KEY not configured, skipping translation");
-    return null;
+    return now.toISOString();
   }
 
-  try {
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(
-      `다음 텍스트를 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요:\n\n${text}`
-    );
-    return result.response.text().trim();
-  } catch (error) {
-    logCrawl("llm", `Translation error: ${error.message}`);
-    return null;
-  }
-}
+  // 월 일 형식 (예: Jan 14, January 14)
+  const monthNames = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+  };
+  const monthDayMatch = str.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})$/i);
+  if (monthDayMatch) {
+    const month = monthNames[monthDayMatch[1].toLowerCase().slice(0, 3)];
+    const day = parseInt(monthDayMatch[2]);
 
-/**
- * GitHub 레포지토리 요약 (JSON 형식)
- */
-export async function summarizeRepo(repoName, description, readmeContent, language) {
-  const client = getClient();
-  if (!client) {
-    logCrawl("llm", "GEMINI_API_KEY not configured, skipping summary");
-    return null;
-  }
+    now.setMonth(month);
+    now.setDate(day);
+    now.setHours(12, 0, 0, 0);
 
-  if (!readmeContent || readmeContent.length < 100) {
-    return null;
-  }
-
-  try {
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `다음 GitHub 레포지토리를 분석하고 요약해주세요.
-
-레포지토리: ${repoName}
-설명: ${description || "(없음)"}
-언어: ${language || "(미지정)"}
-
-README (최대 4000자):
-${readmeContent.slice(0, 4000)}
-
-다음 형식으로 JSON 응답만 출력해주세요:
-{
-  "summary": "한 문장 요약 (한국어, 80자 이내)",
-  "features": ["주요 기능 1", "주요 기능 2", "주요 기능 3"],
-  "targetAudience": "주요 타겟 사용자 (한국어, 30자 이내)",
-  "beginner_description": "초보 개발자를 위한 쉬운 설명 (한국어, 150자 이내)"
-}
-
-JSON만 출력하세요.`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-
-    // JSON 추출
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    // 미래 날짜면 작년으로
+    if (now > new Date()) {
+      now.setFullYear(now.getFullYear() - 1);
     }
-    return null;
-  } catch (error) {
-    logCrawl("llm", `Summary error: ${error.message}`);
-    return null;
-  }
-}
-
-/**
- * 이미지 분석 (LinkedIn 스크린샷 등)
- */
-export async function analyzeImage(imageUrl, prompt) {
-  const client = getClient();
-  if (!client) {
-    logCrawl("llm", "GEMINI_API_KEY not configured, skipping image analysis");
-    return null;
+    return now.toISOString();
   }
 
-  try {
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    // 이미지 URL에서 base64로 변환
-    const response = await fetch(imageUrl);
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    const mimeType = response.headers.get("content-type") || "image/png";
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType,
-          data: base64,
-        },
-      },
-    ]);
-
-    return result.response.text().trim();
-  } catch (error) {
-    logCrawl("llm", `Image analysis error: ${error.message}`);
-    return null;
-  }
+  // 기본값: 현재 시간
+  return new Date().toISOString();
 }
