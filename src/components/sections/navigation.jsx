@@ -74,10 +74,10 @@ const NavigationBar = () => {
 
   return (
     <>
-      <div className="container z-20 flex items-center justify-between gap-5 py-4">
+      <div className="container z-20 flex items-center justify-between gap-2 py-4 sm:gap-5">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="font-cera text-xl font-bold">AI Community</span>
+        <Link href="/" className="flex min-w-0 flex-shrink items-center gap-2">
+          <span className="truncate font-cera text-lg font-bold sm:text-xl">AI Community</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -95,7 +95,7 @@ const NavigationBar = () => {
         </nav>
 
         {/* Right side - toggles and auth */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
           <ThemeToggle />
           <LanguageToggle />
 
@@ -172,7 +172,7 @@ const NavigationBar = () => {
               type: "tween",
               ease: "easeInOut",
             }}
-            className="fixed right-0 top-0 z-50 flex h-screen w-[85%] max-w-sm flex-col border-l bg-background p-4 sm:w-[70%] sm:p-6"
+            className="fixed right-0 top-0 z-50 flex h-dvh w-[85%] max-w-sm flex-col border-l bg-background p-4 sm:w-[70%] sm:p-6"
           >
             {/* Close button */}
             <div className="mb-6 flex justify-end sm:mb-8">
