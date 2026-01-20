@@ -20,6 +20,8 @@
     "home": "홈",
     "content": "콘텐츠",
     "categories": "카테고리",
+    "opensource": "오픈소스",
+    "newsletter": "뉴스레터",
     "homer": "호머",
     "premium": "프리미엄",
     "login": "로그인",
@@ -46,14 +48,6 @@
     "categories": {
       "title": "카테고리별 탐색",
       "subtitle": "관심 분야의 콘텐츠를 찾아보세요"
-    },
-    "newsletter": {
-      "title": "뉴스레터 구독",
-      "subtitle": "매주 엄선된 AI 콘텐츠를 이메일로 받아보세요",
-      "placeholder": "이메일 주소",
-      "button": "구독하기",
-      "success": "구독이 완료되었습니다!",
-      "error": "구독에 실패했습니다. 다시 시도해주세요."
     }
   },
   "content": {
@@ -106,10 +100,10 @@
   },
   "contentTypes": {
     "article": "아티클",
-    "news": "뉴스",
-    "video": "비디오",
+    "news": "뉴스레터",
+    "video": "YouTube",
     "open-source": "오픈소스",
-    "x-thread": "트위터",
+    "x-thread": "X",
     "linkedin": "LinkedIn",
     "threads": "Threads",
     "reddit": "Reddit",
@@ -290,5 +284,72 @@
     "privacy": "개인정보처리방침",
     "contact": "문의",
     "copyright": "© 2024 AI Community. All rights reserved."
+  },
+  "opensource": {
+    "title": "오픈소스 트렌드",
+    "subtitle": "AI/개발 분야에서 주목받는 오픈소스 프로젝트를 발견하세요",
+    "heroTitle": "오픈소스 세계를 탐험하세요",
+    "heroSubtitle": "매일 업데이트되는 트렌딩 레포지토리와 인사이트를 제공합니다",
+    "dailyTrending": "오늘의 트렌딩",
+    "weeklyTrending": "주간 트렌딩",
+    "monthlyTrending": "월간 트렌딩",
+    "allTime": "전체",
+    "rank": "순위",
+    "viewOnGithub": "GitHub에서 보기",
+    "starsToday": "오늘 스타",
+    "starsThisWeek": "이번주 스타",
+    "noResults": "표시할 오픈소스 프로젝트가 없습니다",
+    "loading": "트렌딩 레포지토리 로딩 중...",
+    "filters": {
+      "language": "언어",
+      "allLanguages": "전체 언어",
+      "period": "기간",
+      "daily": "일간",
+      "weekly": "주간",
+      "monthly": "월간",
+      "searchPlaceholder": "레포지토리 검색...",
+      "clear": "초기화"
+    }
+  },
+  "newsletter": {
+    "pageTitle": "뉴스레터",
+    "heroTitle": "5분 만에 AI 트렌드 파악하기",
+    "heroSubtitle": "매주 금요일, 전 세계 AI 소식을 큐레이션해서 보내드립니다",
+    "form": {
+      "placeholder": "이메일 주소 입력",
+      "button": "무료 구독",
+      "success": "구독이 완료되었습니다!",
+      "error": "구독에 실패했습니다. 다시 시도해주세요.",
+      "privacyNote": "스팸 없음 · 언제든 구독 취소 가능"
+    },
+    "features": {
+      "title": "뉴스레터에서 다루는 내용",
+      "curated": {
+        "title": "큐레이션된 AI 뉴스",
+        "description": "YouTube, X, LinkedIn, Reddit, GitHub에서 가장 핫한 AI 소식을 엄선합니다"
+      },
+      "digest": {
+        "title": "5분 다이제스트",
+        "description": "바쁜 일상 속에서도 빠르게 읽을 수 있도록 핵심만 정리합니다"
+      },
+      "insights": {
+        "title": "실무 인사이트",
+        "description": "단순 뉴스가 아닌, AI를 업무에 적용하는 방법을 함께 다룹니다"
+      },
+      "opensource": {
+        "title": "오픈소스 트렌드",
+        "description": "주목할 만한 AI 오픈소스 프로젝트를 소개합니다"
+      }
+    },
+    "stats": {
+      "subscribers": "구독자",
+      "issues": "발행 호수",
+      "openRate": "오픈율"
+    },
+    "valueProps": {
+      "time": "5분 읽기",
+      "frequency": "매주 금요일",
+      "free": "완전 무료"
+    }
   }
 }

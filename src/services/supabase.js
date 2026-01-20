@@ -12,7 +12,8 @@ export const fetchCollectionData = async (collectionName) => {
     Projects: "projects",
   };
 
-  const tableName = tableNameMap[collectionName] || collectionName.toLowerCase();
+  const tableName =
+    tableNameMap[collectionName] || collectionName.toLowerCase();
 
   let query = supabase.from(tableName).select("*");
 
@@ -175,7 +176,7 @@ export const createOrUpdateUser = async (userData) => {
       },
       {
         onConflict: "email",
-      }
+      },
     )
     .select()
     .single();
@@ -228,7 +229,7 @@ export const getUserBookmarks = async (userId) => {
       `
       content_id,
       content:content_id (*)
-    `
+    `,
     )
     .eq("user_id", userId);
 
@@ -307,7 +308,8 @@ export const createContent = async (contentData) => {
       is_premium: contentData.isPremium || false,
       is_featured: contentData.isFeatured || false,
       status: contentData.status || "draft",
-      published_at: contentData.status === "published" ? new Date().toISOString() : null,
+      published_at:
+        contentData.status === "published" ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -558,7 +560,6 @@ export const fetchLatestByPlatform = async ({
   return data || [];
 };
 
-// 추천 콘텐츠 조회 (뉴스/기사 우선)
 export const fetchRecommendedContent = async (limitCount = 6) => {
   const supabase = await createClient();
 
@@ -671,7 +672,8 @@ export const createContentWithSocial = async (contentData) => {
       is_premium: contentData.isPremium || false,
       is_featured: contentData.isFeatured || false,
       status: contentData.status || "draft",
-      published_at: contentData.status === "published" ? new Date().toISOString() : null,
+      published_at:
+        contentData.status === "published" ? new Date().toISOString() : null,
       // SNS 관련 필드
       social_metadata: contentData.socialMetadata || {},
       platform_id: contentData.platformId || null,
@@ -860,7 +862,10 @@ export const deleteCrawledContent = async (ids) => {
 };
 
 // LinkedIn 수동 업로드 (스크린샷)
-export const uploadLinkedInScreenshot = async (screenshotUrl, metadata = {}) => {
+export const uploadLinkedInScreenshot = async (
+  screenshotUrl,
+  metadata = {},
+) => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -883,4 +888,141 @@ export const uploadLinkedInScreenshot = async (screenshotUrl, metadata = {}) => 
   }
 
   return data;
+};
+
+// ===== Open Source (GitHub) Functions =====
+
+export const fetchOpenSourceContent = async ({
+  language,
+  sortBy = "stars",
+  limitCount = 50,
+} = {}) => {
+  const supabase = await createClient();
+
+  const query = supabase
+    .from("content")
+    .select("*")
+    .eq("status", "published")
+    .eq("type", "open-source")
+    .limit(limitCount);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching open source content:", error);
+    throw error;
+  }
+
+  let result = data || [];
+
+  if (language) {
+    result = result.filter((item) => {
+      const lang = item.social_metadata?.language;
+      return lang && lang.toLowerCase() === language.toLowerCase();
+    });
+  }
+
+  result.sort((a, b) => {
+    if (sortBy === "stars") {
+      return (b.social_metadata?.stars || 0) - (a.social_metadata?.stars || 0);
+    } else if (sortBy === "forks") {
+      return (b.social_metadata?.forks || 0) - (a.social_metadata?.forks || 0);
+    } else if (sortBy === "recent") {
+      return new Date(b.published_at) - new Date(a.published_at);
+    }
+    return 0;
+  });
+
+  return result;
+};
+
+export const fetchOpenSourceLanguages = async () => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("content")
+    .select("social_metadata")
+    .eq("status", "published")
+    .eq("type", "open-source");
+
+  if (error) {
+    console.error("Error fetching languages:", error);
+    throw error;
+  }
+
+  const languageCounts = {};
+  (data || []).forEach((item) => {
+    const lang = item.social_metadata?.language;
+    if (lang) {
+      languageCounts[lang] = (languageCounts[lang] || 0) + 1;
+    }
+  });
+
+  return Object.entries(languageCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
+// ===== Newsletter Functions =====
+
+export const subscribeToNewsletter = async (email) => {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("newsletter_subscribers")
+    .upsert(
+      {
+        email: email.toLowerCase().trim(),
+        is_active: true,
+        subscribed_at: new Date().toISOString(),
+        unsubscribed_at: null,
+      },
+      { onConflict: "email" },
+    )
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error subscribing to newsletter:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const unsubscribeFromNewsletter = async (email) => {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("newsletter_subscribers")
+    .update({
+      is_active: false,
+      unsubscribed_at: new Date().toISOString(),
+    })
+    .eq("email", email.toLowerCase().trim())
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error unsubscribing from newsletter:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const getNewsletterSubscriberCount = async () => {
+  const supabase = getSupabaseAdmin();
+
+  const { count, error } = await supabase
+    .from("newsletter_subscribers")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true);
+
+  if (error) {
+    console.error("Error getting subscriber count:", error);
+    return 0;
+  }
+
+  return count || 0;
 };

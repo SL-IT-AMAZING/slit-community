@@ -20,6 +20,8 @@
     "home": "Home",
     "content": "Content",
     "categories": "Categories",
+    "opensource": "Open Source",
+    "newsletter": "Newsletter",
     "homer": "Homer",
     "premium": "Premium",
     "login": "Login",
@@ -46,14 +48,6 @@
     "categories": {
       "title": "Browse by Category",
       "subtitle": "Find content in your area of interest"
-    },
-    "newsletter": {
-      "title": "Subscribe to Newsletter",
-      "subtitle": "Get curated AI content delivered to your inbox weekly",
-      "placeholder": "Email address",
-      "button": "Subscribe",
-      "success": "Successfully subscribed!",
-      "error": "Subscription failed. Please try again."
     }
   },
   "content": {
@@ -106,8 +100,8 @@
   },
   "contentTypes": {
     "article": "Article",
-    "news": "News",
-    "video": "Video",
+    "news": "Newsletter",
+    "video": "YouTube",
     "open-source": "Open Source",
     "x-thread": "X",
     "linkedin": "LinkedIn",
@@ -290,5 +284,72 @@
     "privacy": "Privacy Policy",
     "contact": "Contact",
     "copyright": "© 2024 AI Community. All rights reserved."
+  },
+  "opensource": {
+    "title": "Open Source Trends",
+    "subtitle": "Discover trending open-source projects in AI and development",
+    "heroTitle": "Explore the Open Source World",
+    "heroSubtitle": "Daily updated trending repositories and insights",
+    "dailyTrending": "Today's Trending",
+    "weeklyTrending": "Weekly Trending",
+    "monthlyTrending": "Monthly Trending",
+    "allTime": "All Time",
+    "rank": "Rank",
+    "viewOnGithub": "View on GitHub",
+    "starsToday": "Stars today",
+    "starsThisWeek": "Stars this week",
+    "noResults": "No open source projects to display",
+    "loading": "Loading trending repositories...",
+    "filters": {
+      "language": "Language",
+      "allLanguages": "All Languages",
+      "period": "Period",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "searchPlaceholder": "Search repositories...",
+      "clear": "Clear"
+    }
+  },
+  "newsletter": {
+    "pageTitle": "Newsletter",
+    "heroTitle": "Get Smarter About AI in 5 Minutes",
+    "heroSubtitle": "Curated AI insights delivered to your inbox every Friday",
+    "form": {
+      "placeholder": "Enter your email",
+      "button": "Subscribe Free",
+      "success": "Successfully subscribed!",
+      "error": "Subscription failed. Please try again.",
+      "privacyNote": "No spam · Unsubscribe anytime"
+    },
+    "features": {
+      "title": "What You'll Get",
+      "curated": {
+        "title": "Curated AI News",
+        "description": "Handpicked stories from YouTube, X, LinkedIn, Reddit, and GitHub"
+      },
+      "digest": {
+        "title": "5-Minute Digest",
+        "description": "Concise summaries designed for busy professionals"
+      },
+      "insights": {
+        "title": "Practical Insights",
+        "description": "Not just news — actionable tips to apply AI in your work"
+      },
+      "opensource": {
+        "title": "Open Source Trends",
+        "description": "Notable AI open-source projects worth your attention"
+      }
+    },
+    "stats": {
+      "subscribers": "Subscribers",
+      "issues": "Issues",
+      "openRate": "Open Rate"
+    },
+    "valueProps": {
+      "time": "5-min read",
+      "frequency": "Every Friday",
+      "free": "100% free"
+    }
   }
 }
