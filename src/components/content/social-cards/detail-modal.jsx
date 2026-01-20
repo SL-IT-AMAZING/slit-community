@@ -115,7 +115,7 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/80 p-4"
       onClick={onClose}
       style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
     >
@@ -167,7 +167,7 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
         </div>
 
         {/* Content */}
-        <div className="max-h-[calc(90vh-60px)] overflow-y-auto p-4">
+        <div className="max-h-[calc(90vh-60px)] overflow-y-auto overscroll-contain p-4">
           {renderContent()}
         </div>
       </div>
