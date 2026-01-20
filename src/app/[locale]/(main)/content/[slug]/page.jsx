@@ -8,6 +8,7 @@ const OG_IMAGE_PATTERNS = [
   /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
 ];
 
+const URL_PATTERN = /https?:\/\/[^\s\)>\]"']+/g;
 const CACHE_24_HOURS = 86400;
 
 async function fetchOgImage(url) {
@@ -27,6 +28,20 @@ async function fetchOgImage(url) {
   } catch {
     return null;
   }
+}
+
+function extractUrlsFromBody(body) {
+  if (!body) return [];
+  const matches = body.match(URL_PATTERN) || [];
+  return [...new Set(matches)];
+}
+
+async function findFirstOgImage(urls) {
+  for (const url of urls) {
+    const ogImage = await fetchOgImage(url);
+    if (ogImage) return ogImage;
+  }
+  return null;
 }
 
 export async function generateMetadata({ params }) {
@@ -53,7 +68,11 @@ export async function generateMetadata({ params }) {
     imageUrl = await fetchOgImage(content.external_url);
   }
 
-  // 기본 OG 이미지 (없으면)
+  if (!imageUrl && content.body) {
+    const urlsInBody = extractUrlsFromBody(content.body);
+    imageUrl = await findFirstOgImage(urlsInBody);
+  }
+
   const defaultImage = "/og-default.png";
 
   return {
