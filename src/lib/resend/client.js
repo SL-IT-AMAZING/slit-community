@@ -16,4 +16,4 @@ export const getResend = () => {
   return resendInstance;
 };
 
-export const NEWSLETTER_FROM = "AI Community <onboarding@resend.dev>";
+export const NEWSLETTER_FROM = "AI Community <newsletter@slit-ai.com>";
