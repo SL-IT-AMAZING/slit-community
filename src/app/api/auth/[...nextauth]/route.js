@@ -137,7 +137,7 @@ export async function GET(request, context) {
   try {
     const NextAuth = (await import("next-auth")).default;
     const authOptions = getAuthOptions();
-    return await NextAuth(authOptions)(request, context);
+    return await NextAuth(request, context, authOptions);
   } catch (error) {
     console.error("[NextAuth] GET error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
@@ -151,7 +151,7 @@ export async function POST(request, context) {
   try {
     const NextAuth = (await import("next-auth")).default;
     const authOptions = getAuthOptions();
-    return await NextAuth(authOptions)(request, context);
+    return await NextAuth(request, context, authOptions);
   } catch (error) {
     console.error("[NextAuth] POST error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
