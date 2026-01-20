@@ -36,3 +36,4 @@ yarn-error.log*
 .nvmrc
 # Large video files
 public/screenshots/**/*.mp4
+public/screenshots/
