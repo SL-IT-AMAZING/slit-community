@@ -1,10 +1,23 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
+import { createClient } from "@supabase/supabase-js";
 
-async function getSupabase() {
-  const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
-  return getSupabaseAdmin();
+let supabaseAdmin = null;
+
+function getSupabase() {
+  if (supabaseAdmin) return supabaseAdmin;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    console.error("Supabase admin credentials not configured");
+    return null;
+  }
+
+  supabaseAdmin = createClient(url, serviceKey);
+  return supabaseAdmin;
 }
 
 export const authOptions = {
@@ -26,7 +39,8 @@ export const authOptions = {
     async signIn({ user, account }) {
       if (account?.provider === "google" || account?.provider === "github") {
         try {
-          const supabaseAdmin = await getSupabase();
+          const supabaseAdmin = getSupabase();
+          if (!supabaseAdmin) return true;
           await supabaseAdmin.from("users").upsert(
             {
               email: user.email,
@@ -53,7 +67,12 @@ export const authOptions = {
     async jwt({ token, user, trigger, account }) {
       if (user || trigger === "update" || (account && !token.role)) {
         try {
-          const supabaseAdmin = await getSupabase();
+          const supabaseAdmin = getSupabase();
+          if (!supabaseAdmin) {
+            token.role = token.role ?? "user";
+            token.isPremium = token.isPremium ?? false;
+            return token;
+          }
           const { data: profile } = await supabaseAdmin
             .from("users")
             .select("role, is_premium")
