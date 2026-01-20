@@ -16,10 +16,26 @@ async function getAuthConfig() {
     ],
   );
 
+  console.log("[NextAuth Debug] nextAuthMod keys:", Object.keys(nextAuthMod));
+  console.log("[NextAuth Debug] googleMod keys:", Object.keys(googleMod));
+  console.log("[NextAuth Debug] githubMod keys:", Object.keys(githubMod));
+  console.log(
+    "[NextAuth Debug] credentialsMod keys:",
+    Object.keys(credentialsMod),
+  );
+
   const NextAuth = nextAuthMod.default;
   const GoogleProvider = googleMod.default;
   const GitHubProvider = githubMod.default;
   const CredentialsProvider = credentialsMod.default;
+
+  console.log("[NextAuth Debug] NextAuth type:", typeof NextAuth);
+  console.log("[NextAuth Debug] GoogleProvider type:", typeof GoogleProvider);
+  console.log("[NextAuth Debug] GitHubProvider type:", typeof GitHubProvider);
+  console.log(
+    "[NextAuth Debug] CredentialsProvider type:",
+    typeof CredentialsProvider,
+  );
 
   const authOptions = {
     providers: [
@@ -146,11 +162,35 @@ async function getAuthConfig() {
 }
 
 export async function GET(request, context) {
-  const { NextAuth, authOptions } = await getAuthConfig();
-  return NextAuth(request, context, authOptions);
+  try {
+    const { NextAuth, authOptions } = await getAuthConfig();
+    console.log("[NextAuth Debug] GET - calling NextAuth");
+    return await NextAuth(request, context, authOptions);
+  } catch (error) {
+    console.error("[NextAuth] GET error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message, stack: error.stack }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 }
 
 export async function POST(request, context) {
-  const { NextAuth, authOptions } = await getAuthConfig();
-  return NextAuth(request, context, authOptions);
+  try {
+    const { NextAuth, authOptions } = await getAuthConfig();
+    console.log("[NextAuth Debug] POST - calling NextAuth");
+    return await NextAuth(request, context, authOptions);
+  } catch (error) {
+    console.error("[NextAuth] POST error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message, stack: error.stack }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 }
