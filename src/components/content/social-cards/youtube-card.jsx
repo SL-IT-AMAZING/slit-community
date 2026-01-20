@@ -3,13 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
 import { FaYoutube, FaEye, FaThumbsUp, FaClock } from "react-icons/fa6";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import BaseSocialCard, {
   AuthorInfo,
   MetricItem,
   formatRelativeTime,
 } from "./base-social-card";
-import DetailModal from "./detail-modal";
+import DetailModal, { preprocessMarkdown } from "./detail-modal";
 import { cn } from "@/lib/utils";
 
 export default function YouTubeCard({
@@ -27,6 +29,8 @@ export default function YouTubeCard({
   metricsHistory = [],
   translatedTitle,
   translatedDescription,
+  digestSummary,
+  fullDigest,
   className,
 }) {
   const locale = useLocale();
@@ -38,8 +42,12 @@ export default function YouTubeCard({
   const contentRef = useRef(null);
 
   // locale 기반 제목/설명 선택
-  const displayTitle = locale === "ko" && translatedTitle ? translatedTitle : title;
-  const displayDescription = locale === "ko" && translatedDescription ? translatedDescription : description;
+  const displayTitle =
+    locale === "ko" && translatedTitle ? translatedTitle : title;
+  const displayDescription =
+    locale === "ko" && translatedDescription
+      ? translatedDescription
+      : description;
 
   const MAX_HEIGHT = 60; // 최대 높이 (px) - description은 더 짧게
 
@@ -54,7 +62,8 @@ export default function YouTubeCard({
     : null;
 
   const thumbnail =
-    thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null);
+    thumbnailUrl ||
+    (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null);
 
   const formatDuration = (dur) => {
     if (!dur) return "";
@@ -80,11 +89,14 @@ export default function YouTubeCard({
     likeCount,
     duration,
     publishedAt,
-    externalUrl: externalUrl || (videoId ? `https://youtube.com/watch?v=${videoId}` : null),
+    externalUrl:
+      externalUrl ||
+      (videoId ? `https://youtube.com/watch?v=${videoId}` : null),
     thumbnailUrl: thumbnail,
     metricsHistory,
     translatedTitle,
     translatedDescription,
+    fullDigest,
   };
 
   return (
@@ -92,7 +104,10 @@ export default function YouTubeCard({
       <BaseSocialCard
         platform="youtube"
         platformIcon={FaYoutube}
-        externalUrl={externalUrl || (videoId ? `https://youtube.com/watch?v=${videoId}` : null)}
+        externalUrl={
+          externalUrl ||
+          (videoId ? `https://youtube.com/watch?v=${videoId}` : null)
+        }
         className={className}
         onClick={() => setModalOpen(true)}
       >
@@ -144,54 +159,102 @@ export default function YouTubeCard({
 
         {/* Channel Info */}
         <div className="mt-3">
-          <AuthorInfo
-            name={channelName}
-            avatar={channelAvatar}
-            size="sm"
-          />
+          <AuthorInfo name={channelName} avatar={channelAvatar} size="sm" />
         </div>
 
         {/* Title */}
-        <h3 className="mt-2 line-clamp-2 text-sm font-semibold">{displayTitle}</h3>
+        <h3 className="mt-2 line-clamp-2 text-sm font-semibold">
+          {displayTitle}
+        </h3>
 
-        {/* Description with Show More */}
-        {displayDescription && (
-          <div className="relative mt-2">
-            <p
-              ref={contentRef}
-              className={`whitespace-pre-wrap break-words text-xs text-muted-foreground transition-all ${
-                !expanded && isOverflowing ? "max-h-[60px] overflow-hidden" : ""
-              }`}
-            >
-              {displayDescription}
-            </p>
-            {/* 그라데이션 + 더보기 버튼 */}
-            {isOverflowing && !expanded && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-6">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(true);
-                  }}
-                  className="min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
-                >
-                  {locale === "ko" ? "더보기" : "Show more"}
-                </button>
+        {/* Summary - GitHub 카드 스타일 */}
+        <div className="relative mt-2">
+          <div
+            ref={contentRef}
+            className={`transition-all ${
+              !expanded && isOverflowing ? "max-h-[100px] overflow-hidden" : ""
+            }`}
+          >
+            {digestSummary?.answer ? (
+              <>
+                <div className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_p]:my-0 [&_p]:text-sm [&_p]:text-foreground [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {preprocessMarkdown(digestSummary.answer)}
+                  </ReactMarkdown>
+                </div>
+                {digestSummary.points && digestSummary.points.length > 0 && (
+                  <ul className="mt-2 space-y-0.5">
+                    {digestSummary.points.slice(0, 3).map((point, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-1.5 text-xs text-muted-foreground"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                        <span className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_p]:my-0 [&_p]:text-xs [&_p]:text-muted-foreground [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {preprocessMarkdown(point)}
+                          </ReactMarkdown>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {digestSummary.targetAudience && (
+                  <p className="mt-2 text-xs italic text-muted-foreground">
+                    🎯 {digestSummary.targetAudience}
+                  </p>
+                )}
+              </>
+            ) : displayDescription ? (
+              <div className="prose prose-neutral max-w-none break-words text-xs dark:prose-invert [&_*]:text-xs [&_p]:my-1 [&_p]:text-muted-foreground">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {preprocessMarkdown(displayDescription)}
+                </ReactMarkdown>
               </div>
-            )}
-            {/* 접기 버튼 */}
-            {expanded && isOverflowing && (
+            ) : null}
+          </div>
+          {/* 그라데이션 + 더보기 버튼 */}
+          {isOverflowing && !expanded && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card to-transparent pt-6">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setExpanded(false);
+                  setExpanded(true);
                 }}
-                className="mt-1 min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
+                className="min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
               >
-                {locale === "ko" ? "접기" : "Show less"}
+                {locale === "ko" ? "더보기" : "Show more"}
               </button>
-            )}
-          </div>
+            </div>
+          )}
+          {/* 접기 버튼 */}
+          {expanded && isOverflowing && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(false);
+              }}
+              className="mt-1 min-h-[44px] px-2 py-1 text-xs font-medium text-primary hover:underline"
+            >
+              {locale === "ko" ? "접기" : "Show less"}
+            </button>
+          )}
+        </div>
+
+        {/* 요약보기 버튼 */}
+        {digestSummary && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setModalOpen(true);
+            }}
+            className="text-mtext mt-3 flex w-full items-center justify-center gap-2 rounded-base border-2 border-border bg-main px-3 py-2 text-sm font-medium shadow-light transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+            </svg>
+            {locale === "ko" ? "AI 요약 보기" : "View AI Summary"}
+          </button>
         )}
 
         {/* Metrics */}

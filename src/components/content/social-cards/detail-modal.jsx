@@ -3,6 +3,8 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useLocale } from "next-intl";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   FaYoutube,
   FaXTwitter,
@@ -32,6 +34,14 @@ import {
   formatRelativeTime,
 } from "./base-social-card";
 import SparklineChart from "./sparkline-chart";
+
+export function preprocessMarkdown(text) {
+  if (!text) return text;
+  return text
+    .replace(/\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/([•\-\*▶️⤵️📌💡🎯🔥👉⚡])(\*\*)/g, "$1 $2");
+}
 
 // Threads 아이콘
 function ThreadsIcon({ size = 16, className }) {
@@ -167,20 +177,30 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
   return createPortal(modalContent, document.body);
 }
 
-// YouTube 상세정보
 function YouTubeDetail({ data, locale }) {
   const [showEmbed, setShowEmbed] = React.useState(false);
 
-  // embedUrl이 전달되지 않은 경우 videoId로 생성
   const embedUrl =
     data.embedUrl ||
     (data.videoId
       ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1`
       : null);
 
+  const digestResult = React.useMemo(() => {
+    const digest = data.fullDigest || data.digestResult;
+    if (!digest) return null;
+    if (typeof digest === "string") {
+      try {
+        return JSON.parse(digest);
+      } catch {
+        return null;
+      }
+    }
+    return digest;
+  }, [data.fullDigest, data.digestResult]);
+
   return (
     <div className="space-y-4">
-      {/* 비디오 플레이어 */}
       <div className="relative aspect-video overflow-hidden rounded-lg border-2 border-border">
         {showEmbed && embedUrl ? (
           <iframe
@@ -202,7 +222,6 @@ function YouTubeDetail({ data, locale }) {
                 className="h-full w-full object-cover"
               />
             )}
-            {/* 재생 버튼 오버레이 */}
             {embedUrl && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
@@ -219,21 +238,68 @@ function YouTubeDetail({ data, locale }) {
         )}
       </div>
 
-      {/* 채널 정보 */}
       <AuthorInfo
         name={data.channelName}
         avatar={data.channelAvatar}
         size="default"
       />
 
-      {/* 제목 */}
       <h2 className="text-lg font-semibold">{data.title}</h2>
 
-      {/* 설명 */}
-      {data.description && (
-        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-          {data.description}
-        </p>
+      {digestResult && (
+        <div className="space-y-3 px-4 text-sm">
+          {digestResult.keyQA && (
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-foreground">
+                Q: {digestResult.keyQA.question}
+              </p>
+              <div className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_*]:text-sm [&_p]:my-0 [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {preprocessMarkdown(`A: ${digestResult.keyQA.answer}`)}
+                </ReactMarkdown>
+              </div>
+              {digestResult.keyQA.mechanism?.points && (
+                <ul className="mt-1.5 space-y-0.5">
+                  {digestResult.keyQA.mechanism.points.map((point, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-xs text-muted-foreground"
+                    >
+                      <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-primary" />
+                      <span className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_*]:text-xs [&_p]:my-0 [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {preprocessMarkdown(point)}
+                        </ReactMarkdown>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {digestResult.intro && (
+            <div className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_*]:text-xs [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {preprocessMarkdown(digestResult.intro)}
+              </ReactMarkdown>
+            </div>
+          )}
+
+          {digestResult.timeline && (
+            <div className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_*]:text-xs [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {preprocessMarkdown(digestResult.timeline)}
+              </ReactMarkdown>
+            </div>
+          )}
+
+          {digestResult.targetAudience && (
+            <p className="text-xs italic text-muted-foreground">
+              🎯 {digestResult.targetAudience}
+            </p>
+          )}
+        </div>
       )}
 
       {/* 메트릭 */}

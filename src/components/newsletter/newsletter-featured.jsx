@@ -28,14 +28,14 @@ export default function NewsletterFeatured() {
   const text = {
     ko: {
       title: "뉴스레터",
-      subtitle: "매주 금요일, AI 트렌드를 정리해 드립니다",
+      subtitle: "매주 금요일, 한 주간 가장 핫했던 AI 소식을 전해드립니다",
       viewAll: "전체 보기",
       readMore: "자세히",
       subscribe: "구독하기",
     },
     en: {
       title: "Newsletter",
-      subtitle: "AI trends delivered every Friday",
+      subtitle: "The hottest AI news of the week, delivered every Friday",
       viewAll: "View All",
       readMore: "Read",
       subscribe: "Subscribe",

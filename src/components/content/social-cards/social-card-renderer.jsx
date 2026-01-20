@@ -31,12 +31,24 @@ function extractVideoIdFromUrl(url) {
 function mapToYouTubeProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
+  const digest = meta.digest_result || {};
 
   // videoId 추출: social_metadata.videoId 우선, 없으면 platform_id 또는 external_url에서 추출
   const videoId =
     meta.videoId ||
     content.platform_id ||
     extractVideoIdFromUrl(content.external_url);
+
+  const digestSummary = digest.keyQA
+    ? {
+        question: digest.keyQA.question,
+        answer: digest.keyQA.answer,
+        points: digest.keyQA.mechanism?.points || [],
+        intro: digest.intro,
+        recommendScore: digest.recommendScore,
+        targetAudience: digest.targetAudience,
+      }
+    : null;
 
   return {
     videoId,
@@ -54,6 +66,10 @@ function mapToYouTubeProps(content) {
     translatedTitle: meta.translatedTitle || content.title,
     translatedDescription:
       meta.translatedContent || content.body || content.description,
+    // 메인 카드용 요약 (timeline 제외)
+    digestSummary,
+    // 상세 모달용 전체 데이터
+    fullDigest: digest,
   };
 }
 
@@ -84,7 +100,11 @@ function mapToXProps(content) {
   }
 
   return {
-    content: content.body_en || content.description_en || content.body,
+    content:
+      digest.content_en ||
+      content.body_en ||
+      content.description_en ||
+      content.body,
     authorName: displayName,
     authorHandle: digest.author_handle || meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
@@ -97,12 +117,11 @@ function mapToXProps(content) {
     mediaUrls,
     externalUrl: content.external_url,
     contentId: content.id,
-    translatedContent: meta.translatedContent || content.body,
+    translatedContent:
+      digest.content_ko || meta.translatedContent || content.body,
     hasVideo: meta.hasVideo || false,
-    // YouTube 임베드 URL
     youtubeEmbedUrl: meta.youtubeEmbedUrl || null,
     youtubeVideoId: meta.youtubeVideoId || null,
-    // Twitter 네이티브 비디오 URL (로컬 다운로드된 비디오 우선)
     twitterVideoUrl: meta.downloadedVideoUrl || meta.twitterVideoUrl || null,
   };
 }
@@ -222,7 +241,11 @@ function mapToThreadsProps(content) {
   }
 
   return {
-    content: content.body_en || content.description_en || content.body,
+    content:
+      digest.content_en ||
+      content.body_en ||
+      content.description_en ||
+      content.body,
     authorName: author.name,
     authorHandle: digest.author_handle || meta.authorHandle || author.handle,
     authorAvatar: author.avatar,
@@ -234,9 +257,9 @@ function mapToThreadsProps(content) {
     mediaUrls,
     externalUrl: content.external_url,
     contentId: content.id,
-    translatedContent: meta.translatedContent || content.body,
+    translatedContent:
+      digest.content_ko || meta.translatedContent || content.body,
     hasVideo: meta.hasVideo || false,
-    // Threads 네이티브 비디오 URL (로컬 다운로드된 비디오 우선)
     threadsVideoUrl: meta.downloadedVideoUrl || meta.threadsVideoUrl || null,
   };
 }
