@@ -1,17 +1,27 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 async function getSupabase() {
   const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
   return getSupabaseAdmin();
 }
 
-function getAuthOptions() {
-  const GoogleProvider = require("next-auth/providers/google").default;
-  const GitHubProvider = require("next-auth/providers/github").default;
-  const CredentialsProvider =
-    require("next-auth/providers/credentials").default;
+async function getAuthConfig() {
+  const [nextAuthMod, googleMod, githubMod, credentialsMod] = await Promise.all(
+    [
+      import("next-auth"),
+      import("next-auth/providers/google"),
+      import("next-auth/providers/github"),
+      import("next-auth/providers/credentials"),
+    ],
+  );
 
-  return {
+  const NextAuth = nextAuthMod.default;
+  const GoogleProvider = googleMod.default;
+  const GitHubProvider = githubMod.default;
+  const CredentialsProvider = credentialsMod.default;
+
+  const authOptions = {
     providers: [
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -131,32 +141,16 @@ function getAuthOptions() {
     },
     secret: process.env.NEXTAUTH_SECRET,
   };
+
+  return { NextAuth, authOptions };
 }
 
 export async function GET(request, context) {
-  try {
-    const NextAuth = (await import("next-auth")).default;
-    const authOptions = getAuthOptions();
-    return await NextAuth(request, context, authOptions);
-  } catch (error) {
-    console.error("[NextAuth] GET error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { NextAuth, authOptions } = await getAuthConfig();
+  return NextAuth(request, context, authOptions);
 }
 
 export async function POST(request, context) {
-  try {
-    const NextAuth = (await import("next-auth")).default;
-    const authOptions = getAuthOptions();
-    return await NextAuth(request, context, authOptions);
-  } catch (error) {
-    console.error("[NextAuth] POST error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { NextAuth, authOptions } = await getAuthConfig();
+  return NextAuth(request, context, authOptions);
 }
