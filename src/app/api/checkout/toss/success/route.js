@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,7 +14,7 @@ export async function GET(request) {
 
     if (!orderId || !paymentKey || !amount || !userId) {
       return NextResponse.redirect(
-        new URL("/ko/premium?error=invalid_params", request.url)
+        new URL("/ko/premium?error=invalid_params", request.url),
       );
     }
 
@@ -21,7 +23,7 @@ export async function GET(request) {
 
     if (!secretKey) {
       return NextResponse.redirect(
-        new URL("/ko/premium?error=toss_not_configured", request.url)
+        new URL("/ko/premium?error=toss_not_configured", request.url),
       );
     }
 
@@ -40,7 +42,7 @@ export async function GET(request) {
           paymentKey,
           amount: parseInt(amount),
         }),
-      }
+      },
     );
 
     const paymentResult = await response.json();
@@ -48,7 +50,7 @@ export async function GET(request) {
     if (!response.ok) {
       console.error("Toss payment verification failed:", paymentResult);
       return NextResponse.redirect(
-        new URL(`/ko/premium?error=${paymentResult.code}`, request.url)
+        new URL(`/ko/premium?error=${paymentResult.code}`, request.url),
       );
     }
 
@@ -83,12 +85,12 @@ export async function GET(request) {
 
     // Redirect to success page
     return NextResponse.redirect(
-      new URL(`/ko/premium/success?orderId=${orderId}`, request.url)
+      new URL(`/ko/premium/success?orderId=${orderId}`, request.url),
     );
   } catch (error) {
     console.error("Toss success handler error:", error);
     return NextResponse.redirect(
-      new URL("/ko/premium?error=server_error", request.url)
+      new URL("/ko/premium?error=server_error", request.url),
     );
   }
 }
