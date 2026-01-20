@@ -3,6 +3,32 @@ import { fetchContentBySlug, incrementViewCount } from "@/services/supabase";
 import { notFound } from "next/navigation";
 import ContentDetail from "./content-detail";
 
+const OG_IMAGE_PATTERNS = [
+  /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+  /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+];
+
+const CACHE_24_HOURS = 86400;
+
+async function fetchOgImage(url) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; OGBot/1.0)" },
+      next: { revalidate: CACHE_24_HOURS },
+    });
+    const html = await response.text();
+
+    for (const pattern of OG_IMAGE_PATTERNS) {
+      const match = html.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }) {
   // URL 인코딩된 한글 slug 디코딩
   const decodedSlug = decodeURIComponent(params.slug);
@@ -13,8 +39,22 @@ export async function generateMetadata({ params }) {
     return { title: "Content Not Found" };
   }
 
-  const title = locale === "en" && content.title_en ? content.title_en : content.title;
-  const description = locale === "en" && content.description_en ? content.description_en : content.description;
+  const title =
+    locale === "en" && content.title_en ? content.title_en : content.title;
+  const description =
+    locale === "en" && content.description_en
+      ? content.description_en
+      : content.description;
+
+  // 이미지 우선순위: thumbnail_url > external_url의 OG 이미지 > 기본 이미지
+  let imageUrl = content.thumbnail_url;
+
+  if (!imageUrl && content.external_url) {
+    imageUrl = await fetchOgImage(content.external_url);
+  }
+
+  // 기본 OG 이미지 (없으면)
+  const defaultImage = "/og-default.png";
 
   return {
     title,
@@ -22,7 +62,7 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title,
       description,
-      images: content.thumbnail_url ? [{ url: content.thumbnail_url }] : [],
+      images: [{ url: imageUrl || defaultImage }],
     },
   };
 }
