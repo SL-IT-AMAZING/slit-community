@@ -58,7 +58,7 @@ export default async function NewsletterPage({ params }) {
       <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/5 via-background to-accent/10">
         <div className="container py-16 lg:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+            <div className="mb-6 hidden flex-wrap items-center justify-center gap-3 sm:flex">
               <Badge variant="secondary" className="gap-1.5 px-3 py-1">
                 <FaClock size={12} />
                 {t("valueProps.time")}
@@ -67,16 +67,13 @@ export default async function NewsletterPage({ params }) {
                 <FaCalendar size={12} />
                 {t("valueProps.frequency")}
               </Badge>
-              <Badge
-                variant="secondary"
-                className="inline-flex gap-1.5 px-3 py-1"
-              >
+              <Badge variant="secondary" className="gap-1.5 px-3 py-1">
                 <FaCheck size={12} />
                 {t("valueProps.free")}
               </Badge>
             </div>
 
-            <h1 className="mb-4 font-cera text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
+            <h1 className="mb-4 font-cera text-2xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
               {t("heroTitle")}
             </h1>
 
