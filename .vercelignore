@@ -1,1 +1,8 @@
+# Screenshots (stored in Supabase Storage)
 public/screenshots
+
+# Cookies
+cookies
+
+# Scripts (not needed in deployment)
+scripts

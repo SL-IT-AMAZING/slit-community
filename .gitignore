@@ -34,6 +34,6 @@ yarn-error.log*
 
 #nvmrc
 .nvmrc
-# Large video files
-public/screenshots/**/*.mp4
+
+# Screenshots (stored in Supabase Storage)
 public/screenshots/
