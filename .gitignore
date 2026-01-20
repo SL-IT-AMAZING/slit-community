@@ -34,5 +34,6 @@ yarn-error.log*
 
 #nvmrc
 .nvmrc
+
 # Screenshots (stored in Supabase Storage)
 public/screenshots/
