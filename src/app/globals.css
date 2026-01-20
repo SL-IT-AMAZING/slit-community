@@ -135,3 +135,8 @@ code {
     overflow-x: clip !important;
   }
 }
+
+/* prose 내 strong 태그 글씨 크기 동일하게 유지 */
+.prose strong {
+  font-size: inherit;
+}
