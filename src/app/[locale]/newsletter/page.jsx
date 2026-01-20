@@ -69,7 +69,7 @@ export default async function NewsletterPage({ params }) {
               </Badge>
               <Badge
                 variant="secondary"
-                className="hidden gap-1.5 px-3 py-1 sm:inline-flex"
+                className="inline-flex gap-1.5 px-3 py-1"
               >
                 <FaCheck size={12} />
                 {t("valueProps.free")}

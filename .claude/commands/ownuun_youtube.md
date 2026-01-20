@@ -1,41 +1,19 @@
-# Ownuun YouTube
+# Ownuun YouTube - YouTube 콘텐츠 분석
 
-YouTube 영상을 **영상을 안 봐도 될 정도로** 상세하게 요약합니다.
+YouTube 영상을 **에이전트가 직접** 분석하고 DB에 저장합니다.
 
-## 빠른 실행
+## 실행 방법
 
-### 방법 1: 배치 분석 스크립트 (권장)
+### 배치 분석 (pending 상태 전체)
 
-```bash
-cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/batch_analyze_youtube.js
-```
+에이전트가 다음을 수행합니다:
 
-**출력 예시:**
+1. DB에서 `pending` 상태의 YouTube 콘텐츠 조회
+2. 각 영상의 자막 추출
+3. 자막 기반 상세 분석
+4. DB 업데이트
 
-```
-Found 10 pending videos. Starting analysis...
-Processing: Claude Code 완벽 가이드 (abc123)
-  - Transcript failed, falling back to description/metadata
-  - Success! Score: 8
-
---- Summary ---
-Analyzed Count: 8
-Average Score: 7.5
-```
-
-### 방법 2: 크롤링 + 분석 통합
-
-```bash
-# 크롤링 먼저
-curl -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "youtube"}'
-
-# 배치 분석 실행
-cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/batch_analyze_youtube.js
-```
-
-### 방법 3: 단일 영상 분석 (슬래시커맨드)
+### 단일 영상 분석
 
 ```
 /ownuun_youtube https://www.youtube.com/watch?v=VIDEO_ID
@@ -43,100 +21,164 @@ cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/batch_analyze_y
 
 ---
 
-## 스크립트 상세 (batch_analyze_youtube.js)
-
-### 처리 흐름
-
-1. **DB 조회**: `status='pending'` AND `platform='youtube'`
-2. **자막 추출**: `youtube-transcript` 라이브러리 사용
-3. **Anthropic 분석**: Claude Haiku로 요약 생성
-4. **DB 업데이트**: `status='completed'`, `digest_result` 저장
-
-### 환경변수 필수
-
-```
-ANTHROPIC_API_KEY=     # Claude Haiku 사용 (없으면 Mock 분석)
-NEXT_PUBLIC_SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-```
-
-### Mock 분석 모드
-
-`ANTHROPIC_API_KEY`가 없으면 자동으로 Mock 분석 수행:
-
-- 메타데이터 기반 간이 요약
-- 랜덤 추천점수 (7-9점)
-
----
-
-## 단일 영상 상세 분석
-
-슬래시커맨드로 개별 영상을 상세 분석할 때:
-
-### 1. 메타데이터 & 자막 추출
+## Step 1: pending 콘텐츠 조회
 
 ```bash
-# 자막 추출 (youtube-transcript 사용)
 cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
-const { getTranscript } = require('./src/lib/youtube-transcript.js');
-getTranscript('VIDEO_ID').then(r => console.log(r.text?.substring(0, 1000)));
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function getPending() {
+  const { data } = await supabase
+    .from('crawled_content')
+    .select('id, platform_id, title, author_name, url')
+    .eq('platform', 'youtube')
+    .eq('status', 'pending')
+    .order('crawled_at', { ascending: false })
+    .limit(10);
+
+  console.log('=== Pending YouTube Videos ===');
+  console.log('Total:', data?.length || 0);
+  data?.forEach((item, i) => {
+    console.log('\\n' + (i+1) + '. ID: ' + item.id);
+    console.log('   Video ID: ' + item.platform_id);
+    console.log('   Title: ' + item.title);
+    console.log('   Channel: ' + item.author_name);
+    console.log('   URL: ' + item.url);
+  });
+}
+getPending();
 "
 ```
 
-### 2. 맥락 파악 (WebSearch)
+---
 
-고유명사 정확한 표기 수집:
+## Step 2: 자막 추출
 
-- `"{영상 제목}" {채널명} summary`
-- `"{발표자명}" {주제 키워드}`
+각 영상의 자막을 추출합니다:
 
-### 3. 상세 분석 (Part 1-4)
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { getTranscript } = require('./src/lib/youtube-transcript.js');
 
-**Part 1: 핵심 Q&A**
+async function extract(videoId) {
+  const { text, success } = await getTranscript(videoId);
+  if (success) {
+    console.log('=== Transcript ===');
+    console.log(text.substring(0, 2000) + '...');
+  } else {
+    console.log('Transcript not available');
+  }
+}
+extract('VIDEO_ID_HERE');
+"
+```
+
+자막이 없는 경우 메타데이터(제목, 설명)로 분석합니다.
+
+---
+
+## Step 3: 상세 분석
+
+에이전트가 자막/메타데이터를 바탕으로 다음 형식으로 분석:
+
+### Part 1: 핵심 Q&A
 
 ```
 📌 **[핵심 질문]**은 무엇이며, **[핵심 개념]**은 무엇인가?
-[1-2문장 답변]
+[1-2문장 핵심 답변]
 
 💡 **[메커니즘 질문]**?
 - **[포인트 1]**: [설명]
 - **[포인트 2]**: [설명]
+- **[포인트 3]**: [설명]
 ```
 
-**Part 2: 영상 개요 (2-3문단)**
+### Part 2: 영상 개요 (2-3문단)
 
-**Part 3: 상세 타임라인 노트 (1500자 이상)**
+### Part 3: 상세 타임라인 노트 (1500자 이상)
 
-**Part 4: 추천점수**
+```
+**1. [대섹션 제목]**
 
-- 점수: 1-10
-- 이유: 1-2문장
-- 대상 독자
+[섹션 핵심 내용]
 
-### 4. 결과 JSON
+**1.1. [소섹션 제목]**
+- **[키워드]**: [설명]
+- [세부 내용]
 
-```json
-{
-  "keyQA": {
-    "question": "핵심 질문",
-    "answer": "1-2문장 답변",
-    "mechanism": {
-      "question": "메커니즘 질문",
-      "points": ["포인트1", "포인트2", "포인트3"]
-    }
-  },
-  "intro": "영상 개요 2-3문단",
-  "timeline": "상세 타임라인 노트 (1500자 이상)",
-  "recommendScore": 8,
-  "recommendReason": "추천 이유",
-  "targetAudience": "대상 독자"
-}
+**2. [다음 대섹션]**
+...
 ```
 
-### 5. DB 저장
+### Part 4: 추천점수
+
+```
+**추천점수**: 8/10
+**추천 이유**: [1-2문장]
+**대상 독자**: [대상 설명]
+```
+
+---
+
+## Step 4: DB 업데이트
+
+분석 결과를 JSON으로 정리 후 저장:
 
 ```bash
-cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/save-digest.js "VIDEO_ID" '<JSON_RESULT>'
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const result = {
+  keyQA: {
+    question: '핵심 질문',
+    answer: '핵심 답변',
+    mechanism: {
+      question: '메커니즘 질문',
+      points: ['포인트1', '포인트2', '포인트3']
+    }
+  },
+  intro: '영상 개요 2-3문단',
+  timeline: '상세 타임라인 노트',
+  recommendScore: 8,
+  recommendReason: '추천 이유',
+  targetAudience: '대상 독자',
+  processedAt: new Date().toISOString()
+};
+const recordId = 'UUID-HERE';
+
+async function update() {
+  const { error } = await supabase
+    .from('crawled_content')
+    .update({
+      status: 'completed',
+      digest_result: result
+    })
+    .eq('id', recordId);
+
+  console.log(error ? 'Error: ' + error.message : 'Updated: ' + recordId);
+}
+update();
+"
+```
+
+---
+
+## Step 5: 완료 보고
+
+모든 분석 완료 후:
+
+```
+=== YouTube 분석 완료 ===
+분석된 개수: N개
+평균 추천점수: X.X점
+
+1. [8점] 영상 제목 - 채널명
+2. [7점] 영상 제목 - 채널명
+...
 ```
 
 ---
@@ -163,36 +205,6 @@ cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/save-digest.js 
 
 ---
 
-## 트러블슈팅
-
-### 자막 추출 실패
-
-```
-Transcript failed, falling back to description/metadata
-```
-
-→ 영상에 자막이 없거나 비공개. 메타데이터 기반 분석 진행.
-
-### ANTHROPIC_API_KEY 없음
-
-```
-⚠️ No ANTHROPIC_API_KEY found. Using mock analysis.
-```
-
-→ `.env.local`에 키 추가 또는 Mock 분석 결과 사용
-
-### DB 저장 실패
-
-```
-Error saving to DB: ...
-```
-
-→ Supabase 환경변수 확인
-
----
-
 ## 파일 경로
 
-- 배치 스크립트: `scripts/batch_analyze_youtube.js`
-- 단일 저장: `scripts/save-digest.js`
-- 자막 라이브러리: `src/lib/youtube-transcript.js`
+- 자막 추출: `src/lib/youtube-transcript.js`
