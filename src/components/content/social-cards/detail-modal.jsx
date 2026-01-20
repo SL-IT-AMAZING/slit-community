@@ -177,14 +177,93 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
   return createPortal(modalContent, document.body);
 }
 
+// Parse timestamp string (HH:MM:SS or MM:SS) to seconds
+function parseTimestamp(ts) {
+  if (!ts) return 0;
+  const parts = ts.trim().split(":").map(Number);
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return 0;
+}
+
+// Format seconds to MM:SS or HH:MM:SS
+function formatTimestamp(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// Parse timeline text into structured sections
+function parseTimeline(timelineText) {
+  if (!timelineText) return [];
+
+  // Split by timestamp patterns: "00:00:00 - 00:00:30" or "00:00 - 00:30"
+  const timestampRegex =
+    /(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)/g;
+  const sections = [];
+  let lastIndex = 0;
+  let match;
+
+  const matches = [...timelineText.matchAll(timestampRegex)];
+
+  for (let i = 0; i < matches.length; i++) {
+    match = matches[i];
+    const startTime = match[1];
+    const endTime = match[2];
+    const startIndex = match.index + match[0].length;
+    const endIndex =
+      i + 1 < matches.length ? matches[i + 1].index : timelineText.length;
+    const content = timelineText.slice(startIndex, endIndex).trim();
+
+    sections.push({
+      startTime,
+      endTime,
+      startSeconds: parseTimestamp(startTime),
+      content: content.replace(/^\n+/, "").replace(/\n+$/, ""),
+    });
+  }
+
+  return sections;
+}
+
 function YouTubeDetail({ data, locale }) {
   const [showEmbed, setShowEmbed] = React.useState(false);
+  const iframeRef = React.useRef(null);
 
   const embedUrl =
     data.embedUrl ||
     (data.videoId
-      ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1`
+      ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1&enablejsapi=1`
       : null);
+
+  // Seek video to specific time
+  const seekTo = React.useCallback(
+    (seconds) => {
+      if (!showEmbed) {
+        // Start video at specific time
+        setShowEmbed(true);
+      }
+      // Use postMessage to control embedded YouTube player
+      if (iframeRef.current) {
+        iframeRef.current.contentWindow?.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "seekTo",
+            args: [seconds, true],
+          }),
+          "*",
+        );
+      }
+    },
+    [showEmbed],
+  );
 
   const digestResult = React.useMemo(() => {
     const digest = data.fullDigest || data.digestResult;
@@ -204,6 +283,7 @@ function YouTubeDetail({ data, locale }) {
       <div className="relative aspect-video overflow-hidden rounded-lg border-2 border-border">
         {showEmbed && embedUrl ? (
           <iframe
+            ref={iframeRef}
             src={embedUrl}
             className="absolute inset-0 h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -287,10 +367,34 @@ function YouTubeDetail({ data, locale }) {
           )}
 
           {digestResult.timeline && (
-            <div className="prose prose-sm prose-neutral max-w-none dark:prose-invert [&_*]:text-xs [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {preprocessMarkdown(digestResult.timeline)}
-              </ReactMarkdown>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {locale === "ko" ? "📋 타임라인" : "📋 Timeline"}
+              </p>
+              <div className="space-y-3">
+                {parseTimeline(digestResult.timeline).map((section, i) => (
+                  <div key={i} className="space-y-1">
+                    <button
+                      onClick={() => seekTo(section.startSeconds)}
+                      className="inline-flex items-center gap-1.5 rounded bg-primary/10 px-2 py-0.5 font-mono text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                    >
+                      <svg
+                        className="h-3 w-3"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      {formatTimestamp(section.startSeconds)}
+                    </button>
+                    <div className="prose prose-sm prose-neutral max-w-none pl-2 dark:prose-invert [&_*]:text-xs [&_p]:my-0 [&_strong]:text-pink-500 dark:[&_strong]:text-yellow-400">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {preprocessMarkdown(section.content)}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

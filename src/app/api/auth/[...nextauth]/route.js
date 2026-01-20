@@ -1,41 +1,16 @@
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 async function getSupabase() {
   const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
   return getSupabaseAdmin();
 }
 
-async function getAuthConfig() {
-  const [nextAuthMod, googleMod, githubMod, credentialsMod] = await Promise.all(
-    [
-      import("next-auth"),
-      import("next-auth/providers/google"),
-      import("next-auth/providers/github"),
-      import("next-auth/providers/credentials"),
-    ],
-  );
-
-  console.log("[NextAuth Debug] nextAuthMod keys:", Object.keys(nextAuthMod));
-  console.log("[NextAuth Debug] googleMod keys:", Object.keys(googleMod));
-  console.log("[NextAuth Debug] githubMod keys:", Object.keys(githubMod));
-  console.log(
-    "[NextAuth Debug] credentialsMod keys:",
-    Object.keys(credentialsMod),
-  );
-
-  const NextAuth = nextAuthMod.default;
-  const GoogleProvider = googleMod.default;
-  const GitHubProvider = githubMod.default;
-  const CredentialsProvider = credentialsMod.default;
-
-  console.log("[NextAuth Debug] NextAuth type:", typeof NextAuth);
-  console.log("[NextAuth Debug] GoogleProvider type:", typeof GoogleProvider);
-  console.log("[NextAuth Debug] GitHubProvider type:", typeof GitHubProvider);
-  console.log(
-    "[NextAuth Debug] CredentialsProvider type:",
-    typeof CredentialsProvider,
-  );
+async function handler(request, context) {
+  const NextAuth = (await import("next-auth")).default;
+  const { default: GoogleProvider } =
+    await import("next-auth/providers/google");
+  const { default: GitHubProvider } =
+    await import("next-auth/providers/github");
 
   const authOptions = {
     providers: [
@@ -46,51 +21,6 @@ async function getAuthConfig() {
       GitHubProvider({
         clientId: process.env.GITHUB_CLIENT_ID ?? "",
         clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-      }),
-      CredentialsProvider({
-        name: "credentials",
-        credentials: {
-          email: { label: "Email", type: "email" },
-          password: { label: "Password", type: "password" },
-        },
-        async authorize(credentials) {
-          if (!credentials?.email || !credentials?.password) {
-            return null;
-          }
-
-          try {
-            const supabaseAdmin = await getSupabase();
-
-            const { data, error } = await supabaseAdmin.auth.signInWithPassword(
-              {
-                email: credentials.email,
-                password: credentials.password,
-              },
-            );
-
-            if (error || !data.user) {
-              return null;
-            }
-
-            const { data: profile } = await supabaseAdmin
-              .from("users")
-              .select("*")
-              .eq("email", data.user.email)
-              .single();
-
-            return {
-              id: profile?.id || data.user.id,
-              email: data.user.email,
-              name: profile?.display_name || data.user.user_metadata?.full_name,
-              image: profile?.photo_url || data.user.user_metadata?.avatar_url,
-              role: profile?.role || "user",
-              isPremium: profile?.is_premium || false,
-            };
-          } catch (error) {
-            console.error("Credentials auth error:", error);
-            return null;
-          }
-        },
       }),
     ],
     pages: {
@@ -148,7 +78,6 @@ async function getAuthConfig() {
             token.isPremium = token.isPremium ?? false;
           }
         }
-
         return token;
       },
     },
@@ -158,39 +87,7 @@ async function getAuthConfig() {
     secret: process.env.NEXTAUTH_SECRET,
   };
 
-  return { NextAuth, authOptions };
+  return NextAuth(request, context, authOptions);
 }
 
-export async function GET(request, context) {
-  try {
-    const { NextAuth, authOptions } = await getAuthConfig();
-    console.log("[NextAuth Debug] GET - calling NextAuth");
-    return await NextAuth(request, context, authOptions);
-  } catch (error) {
-    console.error("[NextAuth] GET error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message, stack: error.stack }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-}
-
-export async function POST(request, context) {
-  try {
-    const { NextAuth, authOptions } = await getAuthConfig();
-    console.log("[NextAuth Debug] POST - calling NextAuth");
-    return await NextAuth(request, context, authOptions);
-  } catch (error) {
-    console.error("[NextAuth] POST error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message, stack: error.stack }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-}
+export { handler as GET, handler as POST };

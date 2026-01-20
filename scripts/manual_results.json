@@ -1,0 +1,57 @@
+[
+  {
+    "platform_id": "DTucM4vErWr",
+    "author_handle": "@ted_entrepreneur",
+    "summary_oneline": "게임 끝났다는 낚시성 포스트",
+    "content_ko": "이건 진짜 알려주기 싫은데, 게임 끝난거죠.",
+    "content_en": "I really don't want to share this, but it's game over.",
+    "metrics": { "likes": 23, "replies": 3, "reposts": 1 },
+    "categories": ["productivity-tools", "entrepreneurship"],
+    "recommendScore": 3,
+    "recommendReason": "낚시성 제목과 낮은 정보 가치"
+  },
+  {
+    "platform_id": "DTt_L33ErBW",
+    "author_handle": "@nordiske_space",
+    "summary_oneline": "첫 창업으로 앱보다 B2B 프로그램 추천",
+    "content_ko": "내가 첫 스타트업을 앱 개발로 했지만, 대기업들도 힘들어하는 것이 고객에게 앱을 깔게 하는 방법을 찾는거지. 일단은 유저들은 내 폰에 모가 깔리면 용량도 차지하고 광고도 날라오고 그래서 부정적 경험이 커. 그래서 내가 보기엔 첫 사업은 피씨 기반의 B2B 프로그램이 좋아",
+    "content_en": "I started my first startup with app development, but even large corporations struggle to find ways to make customers install apps. Users tend to have a negative experience when something is installed on their phones because it takes up storage and leads to ads. That's why I think a PC-based B2B program is a better choice for a first business.",
+    "metrics": { "likes": 22, "replies": 15, "reposts": 1 },
+    "categories": ["startup-strategy", "b2b", "product-development"],
+    "recommendScore": 8,
+    "recommendReason": "앱보다 B2B SaaS가 첫 창업에 유리하다는 경험 기반 조언"
+  },
+  {
+    "platform_id": "DTu4YOKE1Ds",
+    "author_handle": "@rich_dadc",
+    "summary_oneline": "가장 강한 사람은 다정함을 잃지 않는 사람",
+    "content_ko": "내가 지금까지 만난 가장 강한 사람은 다정함을 잃지 않는 사람이었다.",
+    "content_en": "The strongest person I've ever met was someone who never lost their kindness.",
+    "metrics": { "likes": 37, "replies": 0, "reposts": 1 },
+    "categories": ["mindset", "inspiration"],
+    "recommendScore": 7,
+    "recommendReason": "짧고 강력한 동기부여 명언"
+  },
+  {
+    "platform_id": "DTu0fe8E7-x",
+    "author_handle": "@sahilframez",
+    "summary_oneline": "웹 데스크톱 및 모바일 브레이크포인트 예시",
+    "content_ko": "웹 데스크톱 및 모바일 브레이크포인트",
+    "content_en": "Web desktop & mobile breakpoint",
+    "metrics": { "likes": 3, "replies": 0, "reposts": 0 },
+    "categories": ["ui-ux", "web-design"],
+    "recommendScore": 3,
+    "recommendReason": "단순 UI 디자인 예시로 기술적 깊이 부족"
+  },
+  {
+    "platform_id": "DTuVrYuEdTv",
+    "author_handle": "@ho_eatjja",
+    "summary_oneline": "개인적인 일상 잡담",
+    "content_ko": "스하리 커몬 반하리 뛰어갈게",
+    "content_en": "Seuhari come on, Van Hari I'll run to you",
+    "metrics": { "likes": 0, "replies": 0, "reposts": 0 },
+    "categories": ["personal"],
+    "recommendScore": 1,
+    "recommendReason": "정보 가치가 없는 개인적 잡담"
+  }
+]

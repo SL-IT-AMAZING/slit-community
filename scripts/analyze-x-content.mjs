@@ -3,19 +3,19 @@
  * pending_analysis 상태의 X 콘텐츠를 분석하여 DB 업데이트
  */
 
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
 
 // Load .env.local first
-dotenv.config({ path: '.env.local' });
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import fs from 'fs';
-import path from 'path';
+dotenv.config({ path: ".env.local" });
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
+import path from "path";
 
 // Supabase 클라이언트
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
 // Gemini 클라이언트
@@ -25,9 +25,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * 이미지를 base64로 인코딩
  */
 function imageToBase64(imagePath) {
-  const absolutePath = imagePath.startsWith('/')
-    ? imagePath
-    : path.join(process.cwd(), 'public', imagePath);
+  let absolutePath = imagePath;
+
+  // If path starts with /screenshots, treat it as relative to public directory
+  if (imagePath.startsWith("/screenshots")) {
+    absolutePath = path.join(process.cwd(), "public", imagePath);
+  } else if (!imagePath.startsWith("/")) {
+    absolutePath = path.join(process.cwd(), "public", imagePath);
+  }
 
   if (!fs.existsSync(absolutePath)) {
     console.log(`Image not found: ${absolutePath}`);
@@ -35,7 +40,7 @@ function imageToBase64(imagePath) {
   }
 
   const imageData = fs.readFileSync(absolutePath);
-  return imageData.toString('base64');
+  return imageData.toString("base64");
 }
 
 /**
@@ -46,24 +51,24 @@ async function extractTextFromScreenshot(screenshotPath) {
     const base64Image = imageToBase64(screenshotPath);
     if (!base64Image) return null;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const result = await model.generateContent([
       {
         inlineData: {
-          mimeType: 'image/png',
-          data: base64Image
-        }
+          mimeType: "image/png",
+          data: base64Image,
+        },
       },
       `Extract the main tweet/post text content from this X (Twitter) screenshot.
 Return ONLY the text content of the post, nothing else.
 Do not include username, handle, timestamp, metrics, or any UI elements.
-If there are multiple posts visible, extract only the main/focused post.`
+If there are multiple posts visible, extract only the main/focused post.`,
     ]);
 
     return result.response.text().trim();
   } catch (error) {
-    console.error('Vision extraction error:', error.message);
+    console.error("Vision extraction error:", error.message);
     return null;
   }
 }
@@ -72,11 +77,11 @@ If there are multiple posts visible, extract only the main/focused post.`
  * Gemini로 콘텐츠 분석
  */
 async function analyzeContent(content, authorHandle, screenshotUrl) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `Analyze this X (Twitter) post and provide a structured analysis.
 
-Author: ${authorHandle || 'Unknown'}
+Author: ${authorHandle || "Unknown"}
 Content:
 ${content}
 
@@ -105,17 +110,20 @@ Return ONLY valid JSON, no markdown or additional text.`;
     let parsed;
     try {
       // 마크다운 코드 블록 제거
-      const jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const jsonText = responseText
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
       parsed = JSON.parse(jsonText);
     } catch (e) {
-      console.error('JSON parse error:', e.message);
-      console.log('Raw response:', responseText.substring(0, 500));
+      console.error("JSON parse error:", e.message);
+      console.log("Raw response:", responseText.substring(0, 500));
       return null;
     }
 
     return parsed;
   } catch (error) {
-    console.error('Analysis error:', error.message);
+    console.error("Analysis error:", error.message);
     return null;
   }
 }
@@ -124,25 +132,25 @@ Return ONLY valid JSON, no markdown or additional text.`;
  * 메인 분석 함수
  */
 async function analyzeXContent() {
-  console.log('=== X Content Analysis Started ===\n');
+  console.log("=== X Content Analysis Started ===\n");
 
   // pending_analysis 상태의 X 콘텐츠 조회
   const { data: records, error } = await supabase
-    .from('crawled_content')
-    .select('*')
-    .eq('platform', 'x')
-    .eq('status', 'pending_analysis')
-    .order('crawled_at', { ascending: false });
+    .from("crawled_content")
+    .select("*")
+    .eq("platform", "x")
+    .eq("status", "pending_analysis")
+    .order("crawled_at", { ascending: false });
 
   if (error) {
-    console.error('DB query error:', error);
+    console.error("DB query error:", error);
     return;
   }
 
   console.log(`Found ${records?.length || 0} records to analyze\n`);
 
   if (!records || records.length === 0) {
-    console.log('No pending_analysis records found for X platform');
+    console.log("No pending_analysis records found for X platform");
     return { analyzed: 0, avgScore: 0 };
   }
 
@@ -153,42 +161,44 @@ async function analyzeXContent() {
   for (const record of records) {
     console.log(`\n--- Processing: ${record.platform_id} ---`);
     console.log(`URL: ${record.url}`);
-    console.log(`Author: ${record.author_name || 'Unknown'}`);
+    console.log(`Author: ${record.author_name || "Unknown"}`);
 
     // 1. 콘텐츠 텍스트 확보
-    let contentText = record.raw_data?.content || '';
+    let contentText = record.raw_data?.content || "";
 
     if (!contentText && record.screenshot_url) {
-      console.log('Content empty, extracting from screenshot...');
+      console.log("Content empty, extracting from screenshot...");
       contentText = await extractTextFromScreenshot(record.screenshot_url);
     }
 
     if (!contentText) {
-      console.log('Could not extract content, skipping...');
+      console.log("Could not extract content, skipping...");
       continue;
     }
 
-    console.log(`Content (${contentText.length} chars): ${contentText.substring(0, 100)}...`);
+    console.log(
+      `Content (${contentText.length} chars): ${contentText.substring(0, 100)}...`,
+    );
 
     // 2. Gemini로 분석
-    console.log('Analyzing with Gemini...');
+    console.log("Analyzing with Gemini...");
     const analysis = await analyzeContent(
       contentText,
       record.author_name,
-      record.screenshot_url
+      record.screenshot_url,
     );
 
     if (!analysis) {
-      console.log('Analysis failed, skipping...');
+      console.log("Analysis failed, skipping...");
       continue;
     }
 
     console.log(`Summary: ${analysis.summary_oneline}`);
     console.log(`Score: ${analysis.recommendScore}/10`);
-    console.log(`Categories: ${analysis.categories?.join(', ')}`);
+    console.log(`Categories: ${analysis.categories?.join(", ")}`);
 
     // 3. DB 업데이트
-    const authorName = record.author_name?.replace('@', '') || 'Unknown';
+    const authorName = record.author_name?.replace("@", "") || "Unknown";
     const updateData = {
       title: `${authorName} - ${analysis.summary_oneline}`,
       content_text: analysis.content_en,
@@ -200,22 +210,22 @@ async function analyzeXContent() {
         author_handle: record.author_name,
         recommendScore: analysis.recommendScore,
         recommendReason: analysis.recommendReason,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
       },
-      status: 'pending'
+      status: "pending",
     };
 
     const { error: updateError } = await supabase
-      .from('crawled_content')
+      .from("crawled_content")
       .update(updateData)
-      .eq('id', record.id);
+      .eq("id", record.id);
 
     if (updateError) {
       console.error(`Update error for ${record.id}:`, updateError);
       continue;
     }
 
-    console.log('DB updated successfully');
+    console.log("DB updated successfully");
 
     analyzed++;
     totalScore += analysis.recommendScore;
@@ -225,20 +235,20 @@ async function analyzeXContent() {
       author: record.author_name,
       summary: analysis.summary_oneline,
       score: analysis.recommendScore,
-      categories: analysis.categories
+      categories: analysis.categories,
     });
 
     // API 레이트 리밋 방지 (Gemini free tier: 분당 15 요청)
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   const avgScore = analyzed > 0 ? (totalScore / analyzed).toFixed(2) : 0;
 
-  console.log('\n=== Analysis Complete ===');
+  console.log("\n=== Analysis Complete ===");
   console.log(`Analyzed: ${analyzed} records`);
   console.log(`Average Score: ${avgScore}/10`);
 
-  console.log('\n=== Results Summary ===');
+  console.log("\n=== Results Summary ===");
   results.forEach((r, i) => {
     console.log(`${i + 1}. [${r.score}/10] ${r.author}: ${r.summary}`);
   });
@@ -248,10 +258,10 @@ async function analyzeXContent() {
 
 // 실행
 analyzeXContent()
-  .then(result => {
-    console.log('\nFinal Result:', JSON.stringify(result, null, 2));
+  .then((result) => {
+    console.log("\nFinal Result:", JSON.stringify(result, null, 2));
   })
-  .catch(err => {
-    console.error('Script error:', err);
+  .catch((err) => {
+    console.error("Script error:", err);
     process.exit(1);
   });
