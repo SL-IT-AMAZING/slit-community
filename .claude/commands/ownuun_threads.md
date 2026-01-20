@@ -2,7 +2,184 @@
 
 Threads 크롤링 데이터를 분석하고 DB에 저장합니다.
 
-## 카테고리 목록 (중복 허용)
+## 빠른 실행
+
+### 방법 1: 스크립트 실행 (권장)
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/analyze-threads.mjs
+```
+
+**출력 예시:**
+
+```
+Found 20 records to analyze
+
+Analyzing: DTu0fe8E7-x
+  Using DOM content: AI 도구의 발전이...
+  Analyzing screenshot: /screenshots/threads/...
+  Extracted metrics: { likes: 1200, replies: 45, reposts: 230 }
+  Score: 7 -  AI 도구 비교 분석 공유
+
+========== 분석 완료 ==========
+분석된 개수: 18
+평균 추천점수: 6.80
+```
+
+### 방법 2: 크롤링 + 분석 통합
+
+```bash
+# 크롤링 먼저
+curl -X POST http://localhost:3000/api/crawler/run \
+  -H 'Content-Type: application/json' \
+  -d '{"platform": "threads", "options": {"limit": 20}}'
+
+# 분석 실행
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/analyze-threads.mjs
+```
+
+---
+
+## API 레이트 리밋 주의
+
+| API         | 제한   | 스크립트 딜레이 |
+| ----------- | ------ | --------------- |
+| Gemini Free | 15 RPM | 5초             |
+
+### 429 에러 발생 시
+
+```bash
+# 1분 대기 후 재시도
+sleep 60 && node scripts/analyze-threads.mjs
+```
+
+### X와 동시 실행 금지
+
+X와 Threads 분석 스크립트는 **순차 실행**을 권장합니다 (둘 다 Gemini API 사용).
+
+```bash
+# 올바른 순서
+node scripts/analyze-x-content.mjs && sleep 60 && node scripts/analyze-threads.mjs
+```
+
+---
+
+## 스크립트 상세 (analyze-threads.mjs)
+
+### 처리 흐름
+
+1. **DB 조회**: `status='pending_analysis'` AND `platform='threads'`
+2. **텍스트 추출**: `raw_data.content` 또는 스크린샷 Vision OCR
+3. **메트릭 추출**: 스크린샷에서 likes, replies, reposts 추출
+4. **Gemini 분석**: 번역, 요약, 카테고리, 추천점수
+5. **DB 업데이트**: `status='pending'`으로 변경
+
+### 환경변수 필수
+
+```
+GEMINI_API_KEY=        # Gemini 2.0 Flash 사용
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+---
+
+## 수동 분석 (슬래시커맨드로 직접)
+
+### 1단계: pending_analysis 콘텐츠 조회
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function getPending() {
+  const { data } = await supabase
+    .from('crawled_content')
+    .select('id, platform_id, screenshot_url, raw_data, author_name')
+    .eq('platform', 'threads')
+    .eq('status', 'pending_analysis')
+    .order('crawled_at', { ascending: false });
+
+  console.log('Found', data?.length || 0, 'pending Threads posts');
+  data?.forEach((item, i) => {
+    console.log((i+1) + '. ' + item.platform_id);
+    console.log('   Screenshot: ' + item.screenshot_url);
+    console.log('   Content: ' + (item.raw_data?.content?.substring(0, 50) || 'N/A'));
+  });
+}
+getPending();
+"
+```
+
+### 2단계: 스크린샷 Vision 분석
+
+각 스크린샷을 `look_at` 도구로 분석하여 추출:
+
+**분석 결과 JSON:**
+
+```json
+{
+  "content_ko": "한국어 본문",
+  "content_en": "영어 본문",
+  "author_name": "표시 이름",
+  "author_handle": "@handle",
+  "published_at": "2026-01-14T09:16:00Z",
+  "metrics": {
+    "likes": 17800,
+    "replies": 460,
+    "reposts": 9600
+  },
+  "categories": ["llm", "ai-tools"],
+  "summary_oneline": "한 줄 요약 (40자 이내)",
+  "recommendScore": 8,
+  "recommendReason": "추천 이유"
+}
+```
+
+### 3단계: DB 업데이트
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const analysis = { /* 분석 결과 JSON */ };
+const recordId = 'db-record-id';
+
+async function updateRecord() {
+  const { error } = await supabase
+    .from('crawled_content')
+    .update({
+      title: analysis.author_name + ' - ' + analysis.summary_oneline,
+      content_text: analysis.content_en,
+      translated_content: analysis.content_ko,
+      published_at: analysis.published_at,
+      digest_result: {
+        summary_oneline: analysis.summary_oneline,
+        categories: analysis.categories,
+        metrics: analysis.metrics,
+        author_handle: analysis.author_handle,
+        recommendScore: analysis.recommendScore,
+        recommendReason: analysis.recommendReason,
+        processedAt: new Date().toISOString()
+      },
+      status: 'pending'
+    })
+    .eq('id', recordId);
+
+  if (error) console.error('Error:', error);
+  else console.log('Updated:', recordId);
+}
+updateRecord();
+"
+```
+
+---
+
+## 카테고리 목록
 
 - `ai-basics` - AI 기초
 - `llm` - LLM/언어모델
@@ -14,155 +191,38 @@ Threads 크롤링 데이터를 분석하고 DB에 저장합니다.
 - `ai-monetization` - AI 수익화
 - `research-papers` - 연구/논문
 
-## 환경변수
+---
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://ylhlsuuvlrxypxkqslvg.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=(환경변수에서 로드)
-```
+## 추천점수 기준
 
-## 워크플로우
-
-### 1단계: pending_analysis 상태의 Threads 콘텐츠 조회
-
-**DB에서 조회** (Supabase):
-```javascript
-const { data } = await supabase
-  .from('crawled_content')
-  .select('*')
-  .eq('platform', 'threads')
-  .eq('status', 'pending_analysis')
-  .order('crawled_at', { ascending: false });
-```
-
-조회된 각 레코드의 `screenshot_url` 필드에서 스크린샷 경로 확인
-
-### 2단계: 스크린샷 분석
-
-각 포스트의 스크린샷 이미지를 읽어서 분석:
-
-**추출할 정보:**
-- 본문 내용 (content)
-- 작성자 이름/핸들
-- 게시 시간
-- 좋아요, 답글, 리포스트 수
-- **카테고리 (중복 허용)**
-
-**분석 시 JSON 형식:**
-```json
-{
-  "content_ko": "한국어 본문 (읽기 쉽게 줄바꿈 추가, \\n 사용)",
-  "content_en": "영어 본문 (읽기 쉽게 줄바꿈 추가, \\n 사용)",
-  "author_name": "표시 이름",
-  "author_handle": "@handle",
-  "published_at": "2026-01-14T09:16:00Z",
-  "metrics": {
-    "likes": 17800,
-    "replies": 460,
-    "reposts": 9600
-  },
-  "categories": ["llm", "research-papers"],
-  "summary_oneline": "한 줄 요약",
-  "recommendScore": 8,
-  "recommendReason": "AI 트렌드 최신 정보, 실용적 팁 포함"
-}
-```
-
-**추천점수 기준 (1-10점):**
-| 점수 | 기준 |
-|------|------|
+| 점수 | 기준                                      |
+| ---- | ----------------------------------------- |
 | 9-10 | 반드시 포함. 트렌드 선도, 높은 engagement |
-| 7-8 | 포함 권장. 관련성 높고 유익 |
-| 5-6 | 선택적. 괜찮지만 특별하지 않음 |
-| 3-4 | 비추천. 주제와 거리 있음 |
-| 1-2 | 제외. 스팸성/관련 없음 |
+| 7-8  | 포함 권장. 관련성 높고 유익               |
+| 5-6  | 선택적. 괜찮지만 특별하지 않음            |
+| 3-4  | 비추천. 주제와 거리 있음                  |
+| 1-2  | 제외. 스팸성/관련 없음                    |
 
-### 3단계: 양방향 번역 + 한 줄 요약
+---
 
-- 원문 언어 감지 (한국어/영어)
-- **한국어 원문** → `content_ko`에 원문, `content_en`에 영어 번역
-- **영어 원문** → `content_en`에 원문, `content_ko`에 한국어 번역
-- **줄바꿈 처리**: 원문 줄바꿈 보존 + 읽기 어려우면 적절히 줄바꿈 추가 (`\n` 사용)
-- 한 줄 요약 생성 (40자 이내)
+## 트러블슈팅
 
-### 4단계: DB 업데이트
+### 스크린샷 파일 없음
 
-분석 완료 후 각 레코드를 **DB에 업데이트** (Supabase MCP 도구 사용):
+→ `public/screenshots/threads/` 디렉토리 확인
 
-```javascript
-// 각 포스트 분석 완료 후 업데이트
-await supabase
-  .from('crawled_content')
-  .update({
-    title: `${analysis.author_name} - ${analysis.summary_oneline}`,
-    content_text: analysis.content_en,           // 영어 버전
-    translated_content: analysis.content_ko,     // 한국어 버전
-    thumbnail_url: analysis.media_url || record.screenshot_url,
-    published_at: analysis.published_at,         // 게시 시간 (ISO 형식)
-    digest_result: {
-      summary_oneline: analysis.summary_oneline,
-      categories: analysis.categories,
-      metrics: analysis.metrics,
-      author_handle: analysis.author_handle,
-      recommendScore: analysis.recommendScore,
-      recommendReason: analysis.recommendReason,
-      processedAt: new Date().toISOString()
-    },
-    status: "pending"  // pending_analysis → pending 상태 전환
-  })
-  .eq('id', record.id);
-```
+### Gemini 429 에러
 
-**중요**: 각 포스트 분석 완료 후 즉시 DB 업데이트 (배치 아님)
+→ 1분 대기 후 재시도, X와 순차 실행
 
-### 5단계: JSON 백업 (선택)
+### Vision 추출 실패
 
-필요시 분석 결과를 `public/screenshots/threads_analyzed.json`에도 백업:
+→ 스크린샷이 로그인 페이지일 수 있음. `cookies/threads.json` 갱신 필요.
 
-```json
-{
-  "analyzed_at": "2026-01-14T12:00:00Z",
-  "posts": [
-    {
-      "id": "db-record-id",
-      "platform_id": "C1234567890",
-      "screenshot_url": "/screenshots/threads_post_xxx.png",
-      "media_url": "/screenshots/threads_media_xxx.jpg",
-      "url": "https://www.threads.net/@.../post/...",
-      "content": "...",
-      "translated_content": "...",
-      "summary_oneline": "...",
-      "author_name": "...",
-      "author_handle": "@...",
-      "published_at": "...",
-      "metrics": { ... },
-      "categories": ["llm", "ai-tools"],
-      "has_media": true,
-      "media_type": "image"
-    }
-  ]
-}
-```
-
-### 6단계: 완료 후 발행 안내
-
-```
-=== Threads 분석 완료 ===
-DB 업데이트: N건
-
-1. @작성자 - 한 줄 요약
-   카테고리: LLM, 연구
-   좋아요: 17.8K | 리포스트: 9.6K | 답글: 460
-
-2. @작성자 - 한 줄 요약
-   카테고리: AI 도구
-   좋아요: 5.7K | 리포스트: 1.3K | 답글: 320
-
-분석 완료! 관리자 페이지(admin/content)에서 발행하세요.
-```
+---
 
 ## 파일 경로
 
-- 스크린샷: `public/screenshots/threads/` (타임스탬프 폴더)
-- 미디어: `public/screenshots/threads/` (타임스탬프 폴더)
+- 스크립트: `scripts/analyze-threads.mjs`
+- 스크린샷: `public/screenshots/threads/`
 - JSON 백업: `public/screenshots/threads_analyzed.json` (선택)
