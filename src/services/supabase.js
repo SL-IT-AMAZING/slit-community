@@ -770,7 +770,6 @@ export const fetchCrawledContent = async ({
   return data || [];
 };
 
-// 크롤링 콘텐츠 ID로 조회
 export const getCrawledById = async (id) => {
   const supabase = getSupabaseAdmin();
 
@@ -786,6 +785,27 @@ export const getCrawledById = async (id) => {
   }
 
   return data;
+};
+
+export const getCrawledByPlatform = async (
+  platform,
+  statuses = ["pending", "pending_analysis"],
+) => {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("crawled_content")
+    .select("*")
+    .eq("platform", platform)
+    .in("status", statuses)
+    .order("crawled_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching crawled content by platform:", error);
+    throw error;
+  }
+
+  return data || [];
 };
 
 // 크롤링 콘텐츠 상태 업데이트
