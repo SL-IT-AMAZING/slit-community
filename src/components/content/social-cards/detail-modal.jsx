@@ -172,9 +172,11 @@ function YouTubeDetail({ data, locale }) {
   const [showEmbed, setShowEmbed] = React.useState(false);
 
   // embedUrl이 전달되지 않은 경우 videoId로 생성
-  const embedUrl = data.embedUrl || (data.videoId
-    ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1`
-    : null);
+  const embedUrl =
+    data.embedUrl ||
+    (data.videoId
+      ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1`
+      : null);
 
   return (
     <div className="space-y-4">
@@ -391,14 +393,13 @@ function ThreadsDetail({ data, locale }) {
 
 // Reddit 상세정보
 function RedditDetail({ data, locale }) {
-  const displayContent =
-    (locale === "ko" && data.translatedContent
+  const displayContent = (
+    locale === "ko" && data.translatedContent
       ? data.translatedContent
-      : data.content)?.replace(/\\n/g, '\n');
+      : data.content
+  )?.replace(/\\n/g, "\n");
   const displayTitle =
-    locale === "ko" && data.translatedTitle
-      ? data.translatedTitle
-      : data.title;
+    locale === "ko" && data.translatedTitle ? data.translatedTitle : data.title;
   const upvoteRatio =
     data.upvotes && data.downvotes
       ? data.upvotes / (data.upvotes + data.downvotes)
@@ -415,7 +416,9 @@ function RedditDetail({ data, locale }) {
         <span className="text-sm text-muted-foreground">
           {locale === "ko" ? "에 게시됨" : "Posted by"}
         </span>
-        <span className="text-sm text-muted-foreground">u/{data.authorName}</span>
+        <span className="text-sm text-muted-foreground">
+          u/{data.authorName}
+        </span>
       </div>
 
       {/* 제목 */}
@@ -447,11 +450,14 @@ function RedditDetail({ data, locale }) {
         <div className="flex items-center gap-1">
           <FaArrowUp className="text-orange-500" size={14} />
           <span className="font-semibold text-orange-500">
-            {data.upvotes >= 1000 ? `${(data.upvotes / 1000).toFixed(1)}k` : data.upvotes || 0}
+            {data.upvotes >= 1000
+              ? `${(data.upvotes / 1000).toFixed(1)}k`
+              : data.upvotes || 0}
           </span>
         </div>
         <span className="text-xs text-muted-foreground">
-          {Math.round(upvoteRatio * 100)}% {locale === "ko" ? "추천" : "upvoted"}
+          {Math.round(upvoteRatio * 100)}%{" "}
+          {locale === "ko" ? "추천" : "upvoted"}
         </span>
         {data.publishedAt && (
           <span className="text-sm text-muted-foreground">
@@ -550,7 +556,11 @@ function LinkedInDetail({ data, locale }) {
       {/* 메트릭 */}
       <div className="flex flex-wrap items-center gap-4 border-t pt-4">
         <MetricItem icon={FaThumbsUp} value={data.likeCount} label="Likes" />
-        <MetricItem icon={FaComment} value={data.commentCount} label="Comments" />
+        <MetricItem
+          icon={FaComment}
+          value={data.commentCount}
+          label="Comments"
+        />
         <MetricItem icon={FaShare} value={data.repostCount} label="Reposts" />
       </div>
 
@@ -575,11 +585,11 @@ function LinkedInDetail({ data, locale }) {
   );
 }
 
-// GitHub 상세정보
 function GitHubDetail({ data, locale }) {
   const [readmeLightboxOpen, setReadmeLightboxOpen] = React.useState(false);
   const [badgeLightboxOpen, setBadgeLightboxOpen] = React.useState(false);
-  const [starHistoryLightboxOpen, setStarHistoryLightboxOpen] = React.useState(false);
+  const [starHistoryLightboxOpen, setStarHistoryLightboxOpen] =
+    React.useState(false);
 
   const LANGUAGE_COLORS = {
     JavaScript: "#f1e05a",
@@ -590,15 +600,18 @@ function GitHubDetail({ data, locale }) {
     Rust: "#dea584",
     Ruby: "#701516",
   };
-  const langColor = data.languageColor || LANGUAGE_COLORS[data.language] || "#586069";
+  const langColor =
+    data.languageColor || LANGUAGE_COLORS[data.language] || "#586069";
 
   return (
     <div className="space-y-4">
-      {/* 저장소명 */}
       <div className="flex items-center gap-2">
         <FaGithub size={24} className="text-muted-foreground" />
         <a
-          href={data.externalUrl || `https://github.com/${data.repoOwner}/${data.repoName}`}
+          href={
+            data.externalUrl ||
+            `https://github.com/${data.repoOwner}/${data.repoName}`
+          }
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-lg font-semibold hover:text-primary hover:underline"
@@ -608,68 +621,92 @@ function GitHubDetail({ data, locale }) {
         </a>
       </div>
 
-      {/* LLM 요약 또는 설명 */}
-      {data.llmSummary?.summary ? (
-        <div>
-          <p className="text-sm">{data.llmSummary.summary}</p>
+      {(data.trendshiftBadgeUrl ||
+        data.starHistoryUrl ||
+        data.readmeImageUrl) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {data.trendshiftBadgeUrl && (
+            <div
+              className="cursor-pointer overflow-hidden rounded-lg border bg-white p-2 transition-opacity hover:opacity-90"
+              onClick={() => setBadgeLightboxOpen(true)}
+            >
+              <img
+                src={data.trendshiftBadgeUrl}
+                alt="Trendshift Trending Badge"
+                className="mx-auto h-auto max-h-[100px] object-contain"
+              />
+            </div>
+          )}
+
+          {data.starHistoryUrl && (
+            <div
+              className="cursor-pointer overflow-hidden rounded-lg border bg-white transition-opacity hover:opacity-90"
+              onClick={() => setStarHistoryLightboxOpen(true)}
+            >
+              <img
+                src={data.starHistoryUrl}
+                alt="Star History"
+                className="h-auto max-h-[140px] w-full object-contain"
+              />
+            </div>
+          )}
+
+          {data.readmeImageUrl && (
+            <div
+              className="cursor-pointer overflow-hidden rounded-lg border bg-muted/50 transition-opacity hover:opacity-90 sm:col-span-2"
+              onClick={() => setReadmeLightboxOpen(true)}
+            >
+              <img
+                src={data.readmeImageUrl}
+                alt={`${data.repoName} preview`}
+                className="mx-auto h-auto max-h-[200px] w-auto object-contain"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {data.llmSummary ? (
+        <div className="space-y-3">
+          {data.llmSummary.summary && (
+            <p className="text-sm font-medium">{data.llmSummary.summary}</p>
+          )}
           {data.llmSummary.features && data.llmSummary.features.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {data.llmSummary.features.map((feature, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
+            <div>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                {locale === "ko" ? "✅ 주요 기능" : "✅ Key Features"}
+              </p>
+              <ul className="space-y-1.5">
+                {data.llmSummary.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.llmSummary.use_cases &&
+            data.llmSummary.use_cases.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                  {locale === "ko" ? "💡 활용 사례" : "💡 Use Cases"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {data.llmSummary.use_cases.join(", ")}
+                </p>
+              </div>
+            )}
+          {data.llmSummary.beginner_description && (
+            <p className="text-sm italic text-primary">
+              🔥 {data.llmSummary.beginner_description}
+            </p>
           )}
         </div>
       ) : data.description ? (
         <p className="text-sm text-muted-foreground">{data.description}</p>
       ) : null}
 
-      {/* README 이미지 - 클릭하면 확대 */}
-      {data.readmeImageUrl && (
-        <div
-          className="overflow-hidden rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => setReadmeLightboxOpen(true)}
-        >
-          <img
-            src={data.readmeImageUrl}
-            alt={`${data.repoName} preview`}
-            className="h-auto w-full object-cover"
-          />
-        </div>
-      )}
-
-      {/* Trendshift 배지 - 클릭하면 확대 */}
-      {data.trendshiftBadgeUrl && (
-        <div
-          className="overflow-hidden rounded-lg border bg-white cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => setBadgeLightboxOpen(true)}
-        >
-          <img
-            src={data.trendshiftBadgeUrl}
-            alt="Trendshift Trending Badge"
-            className="h-auto w-full"
-          />
-        </div>
-      )}
-
-      {/* Star History 그래프 - 클릭하면 확대 */}
-      {data.starHistoryUrl && (
-        <div
-          className="overflow-hidden rounded-lg border bg-white cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => setStarHistoryLightboxOpen(true)}
-        >
-          <img
-            src={data.starHistoryUrl}
-            alt="Star History"
-            className="h-auto w-full"
-          />
-        </div>
-      )}
-
-      {/* 토픽 */}
       {data.topics && data.topics.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {data.topics.map((topic) => (
@@ -680,7 +717,6 @@ function GitHubDetail({ data, locale }) {
         </div>
       )}
 
-      {/* 메트릭 */}
       <div className="flex flex-wrap items-center gap-4 border-t pt-4">
         {data.language && (
           <span className="flex items-center gap-1.5">
@@ -695,7 +731,6 @@ function GitHubDetail({ data, locale }) {
         <MetricItem icon={FaCodeBranch} value={data.forks} label="Forks" />
       </div>
 
-      {/* 스파크라인 그래프 (GitHub만 상세정보에서 표시) */}
       {data.metricsHistory && data.metricsHistory.length > 1 && (
         <div className="border-t pt-4">
           <span className="text-sm font-medium">
@@ -713,7 +748,6 @@ function GitHubDetail({ data, locale }) {
         </div>
       )}
 
-      {/* 마지막 업데이트 */}
       {data.lastUpdated && (
         <p className="text-xs text-muted-foreground">
           {locale === "ko" ? "업데이트" : "Updated"}{" "}
@@ -721,7 +755,6 @@ function GitHubDetail({ data, locale }) {
         </p>
       )}
 
-      {/* Image Lightboxes */}
       {data.readmeImageUrl && (
         <ImageLightbox
           images={[data.readmeImageUrl]}

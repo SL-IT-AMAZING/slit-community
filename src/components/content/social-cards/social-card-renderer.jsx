@@ -21,7 +21,9 @@ const TYPE_TO_PLATFORM = {
 // YouTube URL에서 videoId 추출
 function extractVideoIdFromUrl(url) {
   if (!url) return null;
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  const match = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  );
   return match ? match[1] : null;
 }
 
@@ -31,7 +33,10 @@ function mapToYouTubeProps(content) {
   const author = content.author_info || {};
 
   // videoId 추출: social_metadata.videoId 우선, 없으면 platform_id 또는 external_url에서 추출
-  const videoId = meta.videoId || content.platform_id || extractVideoIdFromUrl(content.external_url);
+  const videoId =
+    meta.videoId ||
+    content.platform_id ||
+    extractVideoIdFromUrl(content.external_url);
 
   return {
     videoId,
@@ -47,7 +52,8 @@ function mapToYouTubeProps(content) {
     thumbnailUrl: content.thumbnail_url,
     // 번역 필드 추가
     translatedTitle: meta.translatedTitle || content.title,
-    translatedDescription: meta.translatedContent || content.body || content.description,
+    translatedDescription:
+      meta.translatedContent || content.body || content.description,
   };
 }
 
@@ -65,15 +71,15 @@ function mapToXProps(content) {
 
   // 작성자 이름 추출: title 형식이 "Lee Robinson - 요약" 인 경우 첫 부분 사용
   let displayName = author.name;
-  if (content.title && content.title.includes(' - ')) {
-    const namePart = content.title.split(' - ')[0];
+  if (content.title && content.title.includes(" - ")) {
+    const namePart = content.title.split(" - ")[0];
     // @로 시작하지 않으면 이름으로 사용
-    if (!namePart.startsWith('@')) {
+    if (!namePart.startsWith("@")) {
       displayName = namePart;
     }
   }
   // 이름이 @로 시작하면 @ 제거해서 표시
-  if (displayName?.startsWith('@')) {
+  if (displayName?.startsWith("@")) {
     displayName = displayName.slice(1);
   }
 
@@ -84,7 +90,8 @@ function mapToXProps(content) {
     authorAvatar: author.avatar,
     verified: author.verified,
     likeCount: digest.metrics?.likes || meta.likeCount,
-    retweetCount: digest.metrics?.reposts || digest.metrics?.retweets || meta.retweetCount,
+    retweetCount:
+      digest.metrics?.reposts || digest.metrics?.retweets || meta.retweetCount,
     replyCount: digest.metrics?.replies || meta.replyCount,
     publishedAt: content.published_at || content.created_at,
     mediaUrls,
@@ -103,19 +110,30 @@ function mapToXProps(content) {
 function mapToGitHubProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
+  const digest = meta.digest_result || {};
 
-  // title이 "owner/repoName" 형식인 경우 분리
   let repoOwner = meta.repoOwner;
   let repoName = meta.repoName;
-  if (!repoOwner && content.title && content.title.includes('/')) {
-    const parts = content.title.split('/');
+  if (!repoOwner && content.title && content.title.includes("/")) {
+    const parts = content.title.split("/");
     repoOwner = parts[0];
-    repoName = parts.slice(1).join('/');
+    repoName = parts.slice(1).join("/");
   }
-  // fallback: author_info에서 owner 가져오기
   if (!repoOwner && author.name) {
     repoOwner = author.name;
   }
+
+  const llmSummary =
+    digest.tagline || digest.features
+      ? {
+          summary: digest.tagline || content.description,
+          features: digest.features || [],
+          use_cases: digest.use_cases || [],
+          beginner_description: digest.killer_feature
+            ? `${digest.competitor ? `${digest.competitor}보다 나은 점: ` : ""}${digest.killer_feature}`
+            : null,
+        }
+      : null;
 
   return {
     repoOwner,
@@ -129,37 +147,46 @@ function mapToGitHubProps(content) {
     watchers: meta.watchers,
     topics: meta.topics || content.tags || [],
     lastUpdated: meta.lastUpdated,
-    // README 스크린샷: 여러 소스에서 폴백
-    readmeImageUrl: content.readme_image_url || meta.readmeImageUrl || meta.screenshotUrl || content.thumbnail_url,
+    readmeImageUrl:
+      content.readme_image_url ||
+      meta.readmeImageUrl ||
+      meta.screenshotUrl ||
+      content.thumbnail_url,
     externalUrl: content.external_url,
-    // Trendshift + Star History (underscore → camelCase 매핑)
     trendshiftBadgeUrl: meta.trendshiftBadgeUrl || meta.trendshift_badge_url,
-    trendshiftRank: meta.trendshiftRank || meta.trendshift_badge_rank,
+    trendshiftRank:
+      meta.trendshiftRank ||
+      meta.trendshift_badge_rank ||
+      digest.ranking?.daily,
     trendshiftRepoId: meta.trendshiftRepoId || meta.trendshift_url,
-    licenseType: meta.license,
+    licenseType: digest.license || meta.license,
     starHistoryUrl: meta.starHistoryUrl || meta.star_history_screenshot,
+    llmSummary,
   };
 }
 
 function mapToRedditProps(content) {
   const meta = content.social_metadata || {};
   const author = content.author_info || {};
+  const digest = meta.digest_result || {};
 
   return {
     title: content.title_en || content.title,
     content: content.body_en || content.description_en || content.body,
-    subreddit: meta.subreddit,
-    authorName: meta.authorName || author.name,
+    subreddit: digest.subreddit || meta.subreddit,
+    authorName: digest.author_name || meta.authorName || author.name,
     authorAvatar: author.avatar,
-    upvotes: meta.upvotes,
+    upvotes: digest.metrics?.upvotes || meta.score || meta.upvotes || 0,
     downvotes: meta.downvotes,
-    commentCount: meta.commentCount,
+    commentCount:
+      digest.metrics?.comments || meta.num_comments || meta.commentCount,
     awards: meta.awards || [],
-    publishedAt: content.published_at,
-    mediaUrl: content.thumbnail_url,
+    publishedAt: digest.published_at || content.published_at,
+    mediaUrl: content.thumbnail_url || meta.screenshotUrl,
     externalUrl: content.external_url,
     contentId: content.id,
-    translatedTitle: meta.translatedTitle || content.title,
+    translatedTitle:
+      digest.summary_oneline || meta.translatedTitle || content.title,
     translatedContent: meta.translatedContent || content.body,
   };
 }
@@ -218,8 +245,29 @@ export default function SocialCardRenderer({
   content,
   metricsHistory = [],
   className,
+  variant = "grid",
 }) {
   const platform = TYPE_TO_PLATFORM[content.type];
+
+  if (variant === "list" || variant === "compact") {
+    return (
+      <ContentCard
+        slug={content.slug}
+        title={content.title}
+        titleEn={content.title_en}
+        description={content.description}
+        descriptionEn={content.description_en}
+        type={content.type}
+        category={content.category}
+        isPremium={content.is_premium}
+        isFeatured={content.is_featured}
+        viewCount={content.view_count}
+        thumbnailUrl={content.thumbnail_url}
+        publishedAt={content.published_at}
+        variant={variant}
+      />
+    );
+  }
 
   switch (platform) {
     case "youtube":
@@ -292,6 +340,7 @@ export default function SocialCardRenderer({
           viewCount={content.view_count}
           thumbnailUrl={content.thumbnail_url}
           publishedAt={content.published_at}
+          variant={variant}
         />
       );
   }

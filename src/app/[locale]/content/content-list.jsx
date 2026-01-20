@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SocialCardRenderer } from "@/components/content/social-cards";
 import ContentCard from "@/components/content/content-card";
 
-import { FaMagnifyingGlass, FaFilter, FaXmark } from "react-icons/fa6";
+import {
+  FaMagnifyingGlass,
+  FaFilter,
+  FaXmark,
+  FaGrip,
+  FaList,
+  FaBars,
+} from "react-icons/fa6";
 
-const contentTypes = ["article", "video", "open-source", "news", "x-thread", "linkedin", "threads", "reddit"];
+const contentTypes = [
+  "article",
+  "video",
+  "open-source",
+  "news",
+  "x-thread",
+  "linkedin",
+  "threads",
+  "reddit",
+];
+
 const categories = [
   "ai-basics",
   "llm",
@@ -29,6 +47,16 @@ const categories = [
   "ai-monetization",
   "research-papers",
 ];
+
+// 타입을 플랫폼으로 매핑
+const TYPE_TO_PLATFORM = {
+  video: "youtube",
+  "x-thread": "x",
+  linkedin: "linkedin",
+  threads: "threads",
+  "open-source": "github",
+  reddit: "reddit",
+};
 
 const getDateRangeFilter = (range) => {
   const now = new Date();
@@ -44,27 +72,42 @@ const getDateRangeFilter = (range) => {
   }
 };
 
-export default function ContentList({ initialContent, locale, initialType = null }) {
+export default function ContentList({
+  initialContent,
+  locale,
+  initialType = null,
+}) {
   const t = useTranslations();
+  const currentLocale = useLocale();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTypes, setSelectedTypes] = useState(initialType ? [initialType] : []);
+  const [selectedTypes, setSelectedTypes] = useState(
+    initialType ? [initialType] : [],
+  );
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
 
-  // New filter states
-  const [premiumFilter, setPremiumFilter] = useState(null); // null | true | false
-  const [dateRange, setDateRange] = useState("all"); // "week" | "month" | "3months" | "all"
-  const [sortBy, setSortBy] = useState("newest"); // "newest" | "popular"
+  const [premiumFilter, setPremiumFilter] = useState(null);
+  const [dateRange, setDateRange] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [viewMode, setViewMode] = useState("grid");
 
   const filteredContent = useMemo(() => {
     let result = initialContent.filter((item) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const title = (locale === "en" && item.titleEn ? item.titleEn : item.title || "").toLowerCase();
-        const description = (locale === "en" && item.descriptionEn ? item.descriptionEn : item.description || "").toLowerCase();
+        const title = (
+          currentLocale === "en" && item.title_en
+            ? item.title_en
+            : item.title || ""
+        ).toLowerCase();
+        const description = (
+          currentLocale === "en" && item.description_en
+            ? item.description_en
+            : item.description || ""
+        ).toLowerCase();
         if (!title.includes(query) && !description.includes(query)) {
           return false;
         }
@@ -76,19 +119,22 @@ export default function ContentList({ initialContent, locale, initialType = null
       }
 
       // Category filter (multiple selection)
-      if (selectedCategories.length > 0 && !selectedCategories.includes(item.category)) {
+      if (
+        selectedCategories.length > 0 &&
+        !selectedCategories.includes(item.category)
+      ) {
         return false;
       }
 
       // Premium/Free filter
-      if (premiumFilter !== null && item.isPremium !== premiumFilter) {
+      if (premiumFilter !== null && item.is_premium !== premiumFilter) {
         return false;
       }
 
       // Date range filter
       if (dateRange !== "all") {
         const minDate = getDateRangeFilter(dateRange);
-        if (minDate && new Date(item.publishedAt) < minDate) {
+        if (minDate && new Date(item.published_at) < minDate) {
           return false;
         }
       }
@@ -99,14 +145,23 @@ export default function ContentList({ initialContent, locale, initialType = null
     // Sort
     result.sort((a, b) => {
       if (sortBy === "popular") {
-        return (b.viewCount || 0) - (a.viewCount || 0);
+        return (b.view_count || 0) - (a.view_count || 0);
       }
       // Default: newest
-      return new Date(b.publishedAt) - new Date(a.publishedAt);
+      return new Date(b.published_at) - new Date(a.published_at);
     });
 
     return result;
-  }, [initialContent, searchQuery, selectedTypes, selectedCategories, premiumFilter, dateRange, sortBy, locale]);
+  }, [
+    initialContent,
+    searchQuery,
+    selectedTypes,
+    selectedCategories,
+    premiumFilter,
+    dateRange,
+    sortBy,
+    currentLocale,
+  ]);
 
   const handleBookmarkToggle = (id) => {
     setBookmarkedIds((prev) => {
@@ -129,13 +184,22 @@ export default function ContentList({ initialContent, locale, initialType = null
     setSortBy("newest");
   };
 
-  const hasActiveFilters = selectedTypes.length > 0 || selectedCategories.length > 0 || searchQuery || premiumFilter !== null || dateRange !== "all";
+  const hasActiveFilters =
+    selectedTypes.length > 0 ||
+    selectedCategories.length > 0 ||
+    searchQuery ||
+    premiumFilter !== null ||
+    dateRange !== "all";
 
   const activeFilterCount =
     selectedTypes.length +
     selectedCategories.length +
     (premiumFilter !== null ? 1 : 0) +
     (dateRange !== "all" ? 1 : 0);
+
+  const isSocialPlatform = (type) => {
+    return TYPE_TO_PLATFORM[type] !== undefined;
+  };
 
   return (
     <div className="container py-8">
@@ -152,7 +216,10 @@ export default function ContentList({ initialContent, locale, initialType = null
         <div className="flex flex-col gap-4 sm:flex-row">
           {/* Search Input */}
           <div className="relative flex-1">
-            <FaMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+            <FaMagnifyingGlass
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              size={14}
+            />
             <Input
               type="text"
               placeholder={t("content.searchPlaceholder")}
@@ -162,14 +229,55 @@ export default function ContentList({ initialContent, locale, initialType = null
             />
           </div>
 
+          {/* View Mode Toggle */}
+          <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`rounded-md p-2 transition-colors ${
+                viewMode === "grid"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Grid view"
+            >
+              <FaGrip size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`rounded-md p-2 transition-colors ${
+                viewMode === "list"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="List view"
+            >
+              <FaList size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode("compact")}
+              className={`rounded-md p-2 transition-colors ${
+                viewMode === "compact"
+                  ? "bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Compact view"
+            >
+              <FaBars size={14} />
+            </button>
+          </div>
+
           {/* Sort Select */}
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder={t("content.filters.sort")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">{t("content.filters.newest")}</SelectItem>
-              <SelectItem value="popular">{t("content.filters.popular")}</SelectItem>
+              <SelectItem value="newest">
+                {t("content.filters.newest")}
+              </SelectItem>
+              <SelectItem value="popular">
+                {t("content.filters.popular")}
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -192,10 +300,8 @@ export default function ContentList({ initialContent, locale, initialType = null
         {/* Filter Panel */}
         {showFilters && (
           <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-medium">
-                {t("content.filters.button")}
-              </span>
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-medium">{t("content.filters.button")}</span>
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <FaXmark className="mr-1" size={12} />
@@ -204,7 +310,7 @@ export default function ContentList({ initialContent, locale, initialType = null
               )}
             </div>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {/* Content Type Filter */}
               <div>
                 <span className="mb-2 block text-sm font-medium">
@@ -214,13 +320,17 @@ export default function ContentList({ initialContent, locale, initialType = null
                   {contentTypes.map((type) => (
                     <Badge
                       key={type}
-                      variant={selectedTypes.includes(type) ? "default" : "outline"}
+                      variant={
+                        selectedTypes.includes(type) ? "default" : "outline"
+                      }
                       className="cursor-pointer"
-                      onClick={() => setSelectedTypes(prev =>
-                        prev.includes(type)
-                          ? prev.filter(t => t !== type)
-                          : [...prev, type]
-                      )}
+                      onClick={() =>
+                        setSelectedTypes((prev) =>
+                          prev.includes(type)
+                            ? prev.filter((t) => t !== type)
+                            : [...prev, type],
+                        )
+                      }
                     >
                       {t(`contentTypes.${type}`)}
                     </Badge>
@@ -237,13 +347,19 @@ export default function ContentList({ initialContent, locale, initialType = null
                   {categories.map((category) => (
                     <Badge
                       key={category}
-                      variant={selectedCategories.includes(category) ? "default" : "outline"}
+                      variant={
+                        selectedCategories.includes(category)
+                          ? "default"
+                          : "outline"
+                      }
                       className="cursor-pointer"
-                      onClick={() => setSelectedCategories(prev =>
-                        prev.includes(category)
-                          ? prev.filter(c => c !== category)
-                          : [...prev, category]
-                      )}
+                      onClick={() =>
+                        setSelectedCategories((prev) =>
+                          prev.includes(category)
+                            ? prev.filter((c) => c !== category)
+                            : [...prev, category],
+                        )
+                      }
                     >
                       {t(`categories.${category}`)}
                     </Badge>
@@ -291,10 +407,18 @@ export default function ContentList({ initialContent, locale, initialType = null
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t("content.filters.allTime")}</SelectItem>
-                    <SelectItem value="week">{t("content.filters.lastWeek")}</SelectItem>
-                    <SelectItem value="month">{t("content.filters.lastMonth")}</SelectItem>
-                    <SelectItem value="3months">{t("content.filters.last3Months")}</SelectItem>
+                    <SelectItem value="all">
+                      {t("content.filters.allTime")}
+                    </SelectItem>
+                    <SelectItem value="week">
+                      {t("content.filters.lastWeek")}
+                    </SelectItem>
+                    <SelectItem value="month">
+                      {t("content.filters.lastMonth")}
+                    </SelectItem>
+                    <SelectItem value="3months">
+                      {t("content.filters.last3Months")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -310,31 +434,50 @@ export default function ContentList({ initialContent, locale, initialType = null
 
       {/* Content Grid */}
       {filteredContent.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredContent.map((item) => (
-            <ContentCard
-              key={item.id}
-              slug={item.slug}
-              title={item.title}
-              titleEn={item.titleEn}
-              description={item.description}
-              descriptionEn={item.descriptionEn}
-              type={item.type}
-              category={item.category}
-              isPremium={item.isPremium}
-              viewCount={item.viewCount}
-              thumbnailUrl={item.thumbnailUrl}
-              publishedAt={item.publishedAt}
-              isBookmarked={bookmarkedIds.has(item.id)}
-              onBookmarkToggle={() => handleBookmarkToggle(item.id)}
-            />
-          ))}
+        <div
+          className={
+            viewMode === "grid"
+              ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+              : viewMode === "list"
+                ? "flex flex-col gap-4"
+                : "flex flex-col gap-2"
+          }
+        >
+          {filteredContent.map((item) => {
+            if (isSocialPlatform(item.type)) {
+              return (
+                <SocialCardRenderer
+                  key={item.id}
+                  content={item}
+                  variant={viewMode}
+                />
+              );
+            }
+
+            return (
+              <ContentCard
+                key={item.id}
+                variant={viewMode}
+                slug={item.slug}
+                title={item.title}
+                titleEn={item.title_en}
+                description={item.description}
+                descriptionEn={item.description_en}
+                type={item.type}
+                category={item.category}
+                isPremium={item.is_premium}
+                viewCount={item.view_count}
+                thumbnailUrl={item.thumbnail_url}
+                publishedAt={item.published_at}
+                isBookmarked={bookmarkedIds.has(item.id)}
+                onBookmarkToggle={() => handleBookmarkToggle(item.id)}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border py-16">
-          <p className="mb-4 text-muted-foreground">
-            {t("content.noResults")}
-          </p>
+          <p className="mb-4 text-muted-foreground">{t("content.noResults")}</p>
           {hasActiveFilters && (
             <Button variant="outline" onClick={clearFilters}>
               {t("content.filters.clearFilters")}

@@ -30,7 +30,7 @@ export default function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="flex h-8 w-8 items-center justify-center">
+      <div className="flex min-h-[44px] min-w-[44px] items-center justify-center">
         <FaMoon size={18} />
       </div>
     );
@@ -39,7 +39,7 @@ export default function ThemeToggle() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:bg-accent"
       whileTap={{ scale: 0.95 }}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >

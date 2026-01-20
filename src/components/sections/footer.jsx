@@ -25,15 +25,16 @@ const Footer = () => {
         <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
           <span className="font-cera text-lg font-bold">AI Community</span>
           <span className="text-xs text-muted-foreground">
-            &copy; {year ?? new Date().getFullYear()} AI Community. All rights reserved.
+            &copy; {year ?? new Date().getFullYear()} AI Community. All rights
+            reserved.
           </span>
         </div>
-        <nav className="flex items-center gap-4">
+        <nav className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
           {footerLinks.map((link, index) => (
             <Link
               key={index}
               href={link.path}
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="flex min-h-[44px] items-center px-2 text-xs text-muted-foreground transition-colors hover:text-foreground sm:px-3"
             >
               {link.name}
             </Link>

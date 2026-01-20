@@ -19,7 +19,7 @@ export default function LanguageToggle() {
       variant="ghost"
       size="sm"
       onClick={toggleLocale}
-      className="font-medium"
+      className="min-h-[44px] min-w-[44px] font-medium"
     >
       {locale === "ko" ? "EN" : "KO"}
     </Button>
