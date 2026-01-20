@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ContentCard from "@/components/content/content-card";
+import LinkPreviewCard from "@/components/content/link-preview-card";
 import LatestContentSection from "@/components/content/latest-content-section";
 
 import {
@@ -12,6 +13,8 @@ import {
   fetchLatestByPlatform,
   fetchRecommendedContent,
 } from "@/services/supabase";
+
+import NewsletterFeatured from "@/components/newsletter/newsletter-featured";
 
 import {
   FaArrowRight,
@@ -44,7 +47,8 @@ const MOCK_LATEST_CONTENT = [
     id: "yt-1",
     type: "video",
     title: "GPT-5 출시 예정! 달라지는 점 총정리",
-    description: "OpenAI의 차세대 모델 GPT-5의 예상 기능과 변화점을 상세히 분석합니다.",
+    description:
+      "OpenAI의 차세대 모델 GPT-5의 예상 기능과 변화점을 상세히 분석합니다.",
     published_at: "2025-01-10T10:00:00Z",
     external_url: "https://youtube.com/watch?v=example1",
     thumbnail_url: "https://picsum.photos/seed/yt1/640/360",
@@ -72,7 +76,8 @@ const MOCK_LATEST_CONTENT = [
     social_metadata: {
       videoId: "abc123xyz",
       channelName: "테크리뷰",
-      channelAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=techreview",
+      channelAvatar:
+        "https://api.dicebear.com/7.x/avataaars/svg?seed=techreview",
       viewCount: 89000,
       likeCount: 6200,
       duration: "22:15",
@@ -87,7 +92,8 @@ const MOCK_LATEST_CONTENT = [
     id: "x-1",
     type: "x-thread",
     title: "AI 업계 소식",
-    description: "오늘 발표된 Anthropic의 새로운 헌법적 AI 연구 결과가 정말 인상적입니다. 모델의 안전성과 정렬에 대한 새로운 접근 방식을 제시하고 있어요. 스레드로 정리해봤습니다 🧵",
+    description:
+      "오늘 발표된 Anthropic의 새로운 헌법적 AI 연구 결과가 정말 인상적입니다. 모델의 안전성과 정렬에 대한 새로운 접근 방식을 제시하고 있어요. 스레드로 정리해봤습니다 🧵",
     published_at: "2025-01-10T08:00:00Z",
     external_url: "https://x.com/aiexpert/status/123",
     social_metadata: {
@@ -108,7 +114,8 @@ const MOCK_LATEST_CONTENT = [
     id: "x-2",
     type: "x-thread",
     title: "프롬프트 엔지니어링 팁",
-    description: "프롬프트 엔지니어링 5년차의 꿀팁 대방출! Chain of Thought를 제대로 활용하는 방법부터 시스템 프롬프트 최적화까지 모두 공개합니다.",
+    description:
+      "프롬프트 엔지니어링 5년차의 꿀팁 대방출! Chain of Thought를 제대로 활용하는 방법부터 시스템 프롬프트 최적화까지 모두 공개합니다.",
     published_at: "2025-01-09T16:20:00Z",
     external_url: "https://x.com/promptmaster/status/456",
     social_metadata: {
@@ -130,7 +137,8 @@ const MOCK_LATEST_CONTENT = [
     id: "li-1",
     type: "linkedin",
     title: "AI 채용 트렌드",
-    description: "2025년 AI 엔지니어 채용 시장 분석입니다. 지난 1년간 AI/ML 관련 채용이 340% 증가했으며, 특히 LLM 전문가와 프롬프트 엔지니어에 대한 수요가 급증하고 있습니다. 주요 기업들의 연봉 동향과 필요 스킬셋을 정리했습니다.",
+    description:
+      "2025년 AI 엔지니어 채용 시장 분석입니다. 지난 1년간 AI/ML 관련 채용이 340% 증가했으며, 특히 LLM 전문가와 프롬프트 엔지니어에 대한 수요가 급증하고 있습니다. 주요 기업들의 연봉 동향과 필요 스킬셋을 정리했습니다.",
     published_at: "2025-01-10T09:00:00Z",
     external_url: "https://linkedin.com/posts/hrmanager-ai123",
     social_metadata: {
@@ -149,7 +157,8 @@ const MOCK_LATEST_CONTENT = [
     id: "li-2",
     type: "linkedin",
     title: "스타트업 AI 도입기",
-    description: "우리 스타트업이 AI를 도입하면서 겪은 시행착오와 배움을 공유합니다. 처음에는 모든 것을 AI로 자동화하려 했지만, 결국 사람과 AI의 협업이 핵심이라는 것을 깨달았습니다.",
+    description:
+      "우리 스타트업이 AI를 도입하면서 겪은 시행착오와 배움을 공유합니다. 처음에는 모든 것을 AI로 자동화하려 했지만, 결국 사람과 AI의 협업이 핵심이라는 것을 깨달았습니다.",
     published_at: "2025-01-08T11:30:00Z",
     external_url: "https://linkedin.com/posts/ceo-startup456",
     social_metadata: {
@@ -169,7 +178,8 @@ const MOCK_LATEST_CONTENT = [
     id: "th-1",
     type: "threads",
     title: "AI 아트 제작기",
-    description: "Midjourney v6로 만든 작품들입니다 ✨ 이번에 새로 추가된 스타일 레퍼런스 기능이 정말 대단해요. 원하는 분위기를 정확하게 재현할 수 있어서 작업 효율이 확 올랐습니다!",
+    description:
+      "Midjourney v6로 만든 작품들입니다 ✨ 이번에 새로 추가된 스타일 레퍼런스 기능이 정말 대단해요. 원하는 분위기를 정확하게 재현할 수 있어서 작업 효율이 확 올랐습니다!",
     published_at: "2025-01-10T12:00:00Z",
     external_url: "https://threads.net/@aiartist/post/123",
     social_metadata: {
@@ -177,7 +187,10 @@ const MOCK_LATEST_CONTENT = [
       likeCount: 4560,
       replyCount: 234,
       repostCount: 890,
-      mediaUrls: ["https://picsum.photos/seed/th1/600/600", "https://picsum.photos/seed/th2/600/600"],
+      mediaUrls: [
+        "https://picsum.photos/seed/th1/600/600",
+        "https://picsum.photos/seed/th2/600/600",
+      ],
     },
     author_info: {
       name: "AI 아티스트",
@@ -190,7 +203,8 @@ const MOCK_LATEST_CONTENT = [
     id: "th-2",
     type: "threads",
     title: "일상 AI 활용팁",
-    description: "ChatGPT로 하루를 시작하는 방법 🌅 매일 아침 오늘의 할 일을 정리하고, 우선순위를 정하는 프롬프트를 공유합니다. 생산성이 2배는 올라요!",
+    description:
+      "ChatGPT로 하루를 시작하는 방법 🌅 매일 아침 오늘의 할 일을 정리하고, 우선순위를 정하는 프롬프트를 공유합니다. 생산성이 2배는 올라요!",
     published_at: "2025-01-09T07:00:00Z",
     external_url: "https://threads.net/@dailyai/post/456",
     social_metadata: {
@@ -212,7 +226,8 @@ const MOCK_LATEST_CONTENT = [
     id: "gh-1",
     type: "open-source",
     title: "langchain-kr",
-    description: "LangChain 한국어 튜토리얼 및 예제 코드 모음. 한국어로 작성된 상세한 설명과 실습 가능한 예제를 제공합니다.",
+    description:
+      "LangChain 한국어 튜토리얼 및 예제 코드 모음. 한국어로 작성된 상세한 설명과 실습 가능한 예제를 제공합니다.",
     published_at: "2025-01-09T00:00:00Z",
     external_url: "https://github.com/langchain-kr/langchain-kr",
     social_metadata: {
@@ -232,7 +247,8 @@ const MOCK_LATEST_CONTENT = [
     id: "gh-2",
     type: "open-source",
     title: "local-llm-toolkit",
-    description: "로컬에서 LLM을 쉽게 실행할 수 있는 올인원 툴킷. Ollama, LM Studio 등과 연동 가능하며 다양한 모델을 지원합니다.",
+    description:
+      "로컬에서 LLM을 쉽게 실행할 수 있는 올인원 툴킷. Ollama, LM Studio 등과 연동 가능하며 다양한 모델을 지원합니다.",
     published_at: "2025-01-08T00:00:00Z",
     external_url: "https://github.com/ai-tools/local-llm-toolkit",
     social_metadata: {
@@ -253,7 +269,8 @@ const MOCK_LATEST_CONTENT = [
     id: "rd-1",
     type: "reddit",
     title: "Claude가 GPT보다 코딩에서 더 나은 이유 (개인 경험)",
-    description: "6개월간 두 모델을 번갈아 사용해본 결과, 복잡한 디버깅과 리팩토링에서는 Claude가 확실히 앞서는 것 같습니다. 특히 컨텍스트 이해력이...",
+    description:
+      "6개월간 두 모델을 번갈아 사용해본 결과, 복잡한 디버깅과 리팩토링에서는 Claude가 확실히 앞서는 것 같습니다. 특히 컨텍스트 이해력이...",
     published_at: "2025-01-10T06:00:00Z",
     external_url: "https://reddit.com/r/LocalLLaMA/comments/abc123",
     social_metadata: {
@@ -272,7 +289,8 @@ const MOCK_LATEST_CONTENT = [
     id: "rd-2",
     type: "reddit",
     title: "[공유] 무료로 사용 가능한 AI 코딩 도구 총정리 2025",
-    description: "최근 출시된 무료 AI 코딩 도구들을 정리했습니다. Cursor, Continue, Cody 등 각 도구의 장단점을 비교 분석했어요.",
+    description:
+      "최근 출시된 무료 AI 코딩 도구들을 정리했습니다. Cursor, Continue, Cody 등 각 도구의 장단점을 비교 분석했어요.",
     published_at: "2025-01-09T14:00:00Z",
     external_url: "https://reddit.com/r/programming/comments/def456",
     thumbnail_url: "https://picsum.photos/seed/reddit1/640/360",
@@ -323,20 +341,20 @@ export default async function HomePage({ params }) {
   }
 
   return (
-    <div className="container py-8">
+    <div className="container py-4 sm:py-6 md:py-8">
       {/* Hero Section */}
-      <section className="mb-16 flex flex-col items-center text-center">
-        <Badge className="mb-4" variant="secondary">
+      <section className="mb-8 flex flex-col items-center text-center sm:mb-12 md:mb-16">
+        <Badge className="mb-3 sm:mb-4" variant="secondary">
           {t("common.siteName")}
         </Badge>
-        <h1 className="mb-4 font-cera text-4xl font-bold md:text-5xl lg:text-6xl">
+        <h1 className="mb-3 font-cera text-2xl font-bold sm:mb-4 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
           {t("home.hero.title")}
         </h1>
-        <p className="mb-8 max-w-2xl text-lg text-muted-foreground">
+        <p className="mb-6 max-w-2xl text-base text-muted-foreground sm:mb-8 sm:text-lg">
           {t("home.hero.subtitle")}
         </p>
         <Link href="/content">
-          <Button size="lg">
+          <Button size="lg" className="min-h-[44px]">
             {t("home.hero.cta")}
             <FaArrowRight className="ml-2" />
           </Button>
@@ -344,69 +362,83 @@ export default async function HomePage({ params }) {
       </section>
 
       {/* Featured Content Section */}
-      <section className="mb-16">
-        <div className="mb-8 flex items-center justify-between">
+      <section className="mb-8 sm:mb-12 md:mb-16">
+        <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between md:mb-8">
           <div>
-            <h2 className="font-cera text-2xl font-bold">
+            <h2 className="font-cera text-xl font-bold sm:text-2xl">
               {t("home.featured.title")}
             </h2>
-            <p className="text-muted-foreground">{t("home.featured.subtitle")}</p>
+            <p className="text-sm text-muted-foreground sm:text-base">
+              {t("home.featured.subtitle")}
+            </p>
           </div>
           <Link href="/content?featured=true">
-            <Button variant="link">
+            <Button
+              variant="link"
+              className="min-h-[44px] justify-start p-0 sm:justify-center sm:p-2"
+            >
               {t("common.viewAll")}
               <FaArrowRight className="ml-2" size={12} />
             </Button>
           </Link>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {featuredContent.length > 0 ? (
-            featuredContent.map((content) => (
-              <ContentCard
-                key={content.id}
-                slug={content.slug}
-                title={content.title}
-                titleEn={content.title_en}
-                description={content.description}
-                descriptionEn={content.description_en}
-                type={content.type}
-                category={content.category}
-                isPremium={content.is_premium}
-                isFeatured={content.is_featured}
-                viewCount={content.view_count}
-                thumbnailUrl={content.thumbnail_url}
-                publishedAt={content.published_at}
-              />
-            ))
-          ) : (
-            // Placeholder cards when no data
-            [1, 2, 3].map((i) => (
-              <Card key={i} className="flex flex-col">
-                <CardHeader>
-                  <div className="mb-2 flex items-center gap-2">
-                    <Badge variant="outline">
-                      <FaNewspaper className="mr-1" size={12} />
-                      {t("contentTypes.article")}
-                    </Badge>
+        <div className="scrollbar-hide relative -mx-4 overflow-x-auto overscroll-x-contain sm:mx-0">
+          <div className="flex w-max gap-3 px-4 pb-4 sm:gap-4 sm:px-0">
+            {featuredContent.length > 0
+              ? featuredContent.map((content) => (
+                  <div
+                    key={content.id}
+                    className="w-[280px] flex-shrink-0 sm:w-80 md:w-96"
+                  >
+                    <LinkPreviewCard
+                      slug={content.slug}
+                      title={content.title}
+                      titleEn={content.title_en}
+                      description={content.description}
+                      descriptionEn={content.description_en}
+                      category={content.category}
+                      isPremium={content.is_premium}
+                      thumbnailUrl={content.thumbnail_url}
+                      externalUrl={content.external_url}
+                      publishedAt={content.published_at}
+                    />
                   </div>
-                  <CardTitle className="line-clamp-2">
-                    {locale === "ko"
-                      ? `AI 트렌드 ${i}: 주목해야 할 기술`
-                      : `AI Trend ${i}: Technologies to Watch`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
-                    {locale === "ko"
-                      ? "최신 AI 기술 트렌드와 실무 적용 사례를 소개합니다."
-                      : "Introducing the latest AI technology trends and practical applications."}
-                  </p>
-                </CardContent>
-              </Card>
-            ))
-          )}
+                ))
+              : [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="w-[280px] flex-shrink-0 sm:w-80 md:w-96"
+                  >
+                    <Card className="flex h-full flex-col">
+                      <CardHeader>
+                        <div className="mb-2 flex items-center gap-2">
+                          <Badge variant="outline">
+                            <FaNewspaper className="mr-1" size={12} />
+                            {t("contentTypes.article")}
+                          </Badge>
+                        </div>
+                        <CardTitle className="line-clamp-2">
+                          {locale === "ko"
+                            ? `AI 트렌드 ${i}: 주목해야 할 기술`
+                            : `AI Trend ${i}: Technologies to Watch`}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex-1">
+                        <p className="line-clamp-3 text-sm text-muted-foreground">
+                          {locale === "ko"
+                            ? "최신 AI 기술 트렌드와 실무 적용 사례를 소개합니다."
+                            : "Introducing the latest AI technology trends and practical applications."}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+          </div>
         </div>
       </section>
+
+      {/* Newsletter Section */}
+      <NewsletterFeatured />
 
       {/* Latest Content Section (SNS Cards) */}
       <LatestContentSection
@@ -416,21 +448,20 @@ export default async function HomePage({ params }) {
       />
 
       {/* Categories Section */}
-      <section className="mb-16">
-        <div className="mb-8 text-center">
-          <h2 className="font-cera text-2xl font-bold">
+      <section className="mb-8 sm:mb-12 md:mb-16">
+        <div className="mb-4 text-center sm:mb-6 md:mb-8">
+          <h2 className="font-cera text-xl font-bold sm:text-2xl">
             {t("home.categories.title")}
           </h2>
-          <p className="text-muted-foreground">{t("home.categories.subtitle")}</p>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            {t("home.categories.subtitle")}
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
           {categories.slice(0, 5).map((category) => {
             const Icon = category.icon;
             return (
-              <Link
-                key={category.id}
-                href={`/content?category=${category.id}`}
-              >
+              <Link key={category.id} href={`/content?category=${category.id}`}>
                 <Card className="cursor-pointer hover:bg-accent">
                   <CardContent className="flex flex-col items-center p-6 text-center">
                     <Icon className="mb-2 h-8 w-8 text-primary" />
@@ -443,24 +474,6 @@ export default async function HomePage({ params }) {
             );
           })}
         </div>
-      </section>
-
-      {/* Newsletter Section */}
-      <section className="rounded-lg bg-accent p-8 text-center">
-        <h2 className="mb-2 font-cera text-2xl font-bold">
-          {t("home.newsletter.title")}
-        </h2>
-        <p className="mb-6 text-muted-foreground">
-          {t("home.newsletter.subtitle")}
-        </p>
-        <form className="mx-auto flex max-w-md flex-col gap-2 sm:flex-row">
-          <input
-            type="email"
-            placeholder={t("home.newsletter.placeholder")}
-            className="flex-1 rounded-md border border-input bg-background px-4 py-2"
-          />
-          <Button type="submit">{t("home.newsletter.button")}</Button>
-        </form>
       </section>
     </div>
   );

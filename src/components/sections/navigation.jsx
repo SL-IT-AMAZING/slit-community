@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/layout/theme-toggle";
 import LanguageToggle from "@/components/layout/language-toggle";
 
-import { FaBars, FaXmark, FaUser, FaRightFromBracket, FaGear } from "react-icons/fa6";
+import {
+  FaBars,
+  FaXmark,
+  FaUser,
+  FaRightFromBracket,
+  FaGear,
+} from "react-icons/fa6";
 
 const NavigationBar = () => {
   const t = useTranslations("nav");
@@ -25,6 +31,8 @@ const NavigationBar = () => {
   const navLinks = [
     { name: t("home"), path: "/" },
     { name: t("content"), path: "/content" },
+    { name: t("opensource"), path: "/opensource" },
+    { name: t("newsletter"), path: "/newsletter" },
     { name: t("homer"), path: "/homer" },
     { name: t("premium"), path: "/premium", comingSoon: true },
   ];
@@ -77,7 +85,9 @@ const NavigationBar = () => {
       <div className="container z-20 flex items-center justify-between gap-2 py-4 sm:gap-5">
         {/* Logo */}
         <Link href="/" className="flex min-w-0 flex-shrink items-center gap-2">
-          <span className="truncate font-cera text-lg font-bold sm:text-xl">AI Community</span>
+          <span className="truncate font-cera text-lg font-bold sm:text-xl">
+            AI Community
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -176,7 +186,12 @@ const NavigationBar = () => {
           >
             {/* Close button */}
             <div className="mb-6 flex justify-end sm:mb-8">
-              <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => setIsMenuOpen(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px]"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 <FaXmark size={20} />
               </Button>
             </div>
@@ -240,7 +255,9 @@ const NavigationBar = () => {
                     </Button>
                   </Link>
                   <Link href="/register" onClick={() => setIsMenuOpen(false)}>
-                    <Button className="min-h-[44px] w-full">{t("register")}</Button>
+                    <Button className="min-h-[44px] w-full">
+                      {t("register")}
+                    </Button>
                   </Link>
                 </>
               )}

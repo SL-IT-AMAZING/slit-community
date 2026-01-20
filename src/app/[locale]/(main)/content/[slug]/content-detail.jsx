@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,17 +45,16 @@ export default function ContentDetail({ content, locale }) {
   const t = useTranslations();
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const displayTitle = locale === "en" && content.titleEn
-    ? content.titleEn
-    : content.title;
+  const displayTitle =
+    locale === "en" && content.titleEn ? content.titleEn : content.title;
 
-  const displayDescription = locale === "en" && content.descriptionEn
-    ? content.descriptionEn
-    : content.description;
+  const displayDescription =
+    locale === "en" && content.descriptionEn
+      ? content.descriptionEn
+      : content.description;
 
-  const displayBody = locale === "en" && content.bodyEn
-    ? content.bodyEn
-    : content.body;
+  const displayBody =
+    locale === "en" && content.bodyEn ? content.bodyEn : content.body;
 
   const formattedDate = content.publishedAt
     ? new Date(content.publishedAt).toLocaleDateString(
@@ -63,7 +63,7 @@ export default function ContentDetail({ content, locale }) {
           year: "numeric",
           month: "long",
           day: "numeric",
-        }
+        },
       )
     : null;
 
@@ -110,7 +110,10 @@ export default function ContentDetail({ content, locale }) {
     return (
       <div className="container max-w-4xl px-4 py-4 md:px-6 md:py-8">
         {/* Back button */}
-        <Link href="/content" className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6">
+        <Link
+          href="/content"
+          className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6"
+        >
           <FaArrowLeft size={14} />
           {t("content.backToList")}
         </Link>
@@ -123,7 +126,10 @@ export default function ContentDetail({ content, locale }) {
         {/* Premium Gate Card */}
         <Card className="mt-6 border-yellow-500/50 bg-yellow-500/5 md:mt-8">
           <CardContent className="flex flex-col items-center py-8 text-center md:py-16">
-            <FaCrown size={40} className="mb-4 text-yellow-500 sm:h-12 sm:w-12" />
+            <FaCrown
+              size={40}
+              className="mb-4 text-yellow-500 sm:h-12 sm:w-12"
+            />
             <h2 className="mb-2 text-xl font-bold md:text-2xl">
               {t("content.premiumTitle")}
             </h2>
@@ -145,7 +151,10 @@ export default function ContentDetail({ content, locale }) {
   return (
     <div className="container max-w-4xl px-4 py-4 md:px-6 md:py-8">
       {/* Back button */}
-      <Link href="/content" className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6">
+      <Link
+        href="/content"
+        className="mb-4 inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground hover:text-foreground md:mb-6"
+      >
         <FaArrowLeft size={14} />
         {t("content.backToList")}
       </Link>
@@ -206,15 +215,31 @@ export default function ContentDetail({ content, locale }) {
             ) : (
               <FaRegBookmark className="mr-2" size={14} />
             )}
-            {isBookmarked ? t("content.bookmarked") : t("content.bookmarkButton")}
+            {isBookmarked
+              ? t("content.bookmarked")
+              : t("content.bookmarkButton")}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleShare} className="min-h-[44px] w-full justify-center sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            className="min-h-[44px] w-full justify-center sm:w-auto"
+          >
             <FaShare className="mr-2" size={14} />
             {t("content.share")}
           </Button>
           {content.externalUrl && (
-            <a href={content.externalUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-              <Button variant="outline" size="sm" className="min-h-[44px] w-full justify-center sm:w-auto">
+            <a
+              href={content.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] w-full justify-center sm:w-auto"
+              >
                 <FaLink className="mr-2" size={14} />
                 {t("content.viewOriginal")}
               </Button>
@@ -259,8 +284,8 @@ export default function ContentDetail({ content, locale }) {
       })()}
 
       {/* Content body */}
-      <article className="prose prose-sm prose-neutral max-w-none dark:prose-invert md:prose-base prose-headings:font-cera prose-h1:text-xl prose-h2:text-lg prose-h3:text-base md:prose-h1:text-2xl md:prose-h2:text-xl md:prose-h3:text-lg prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-table:max-w-full">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      <article className="prose prose-sm prose-neutral dark:prose-invert md:prose-base prose-headings:font-cera prose-h1:text-xl prose-h2:text-lg prose-h3:text-base md:prose-h1:text-2xl md:prose-h2:text-xl md:prose-h3:text-lg prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-table:max-w-full prose-strong:text-pink-500 dark:prose-strong:text-yellow-400 max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
           {displayBody || ""}
         </ReactMarkdown>
       </article>
@@ -268,9 +293,7 @@ export default function ContentDetail({ content, locale }) {
       {/* Tags */}
       {content.tags && content.tags.length > 0 && (
         <div className="mt-8 border-t pt-8">
-          <h3 className="mb-4 font-semibold">
-            {t("content.tags")}
-          </h3>
+          <h3 className="mb-4 font-semibold">{t("content.tags")}</h3>
           <div className="flex flex-wrap gap-2">
             {content.tags.map((tag, index) => (
               <Badge key={index} variant="outline">
