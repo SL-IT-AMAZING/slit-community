@@ -33,12 +33,54 @@ function ThreadsIcon({ size = 16, className }) {
 }
 
 const PLATFORMS = [
-  { id: "youtube", icon: FaYoutube, label: "YouTube", labelKo: "YouTube", color: "#FF0000", type: "video" },
-  { id: "x", icon: FaXTwitter, label: "X", labelKo: "트위터", color: "#000000", type: "x-thread" },
-  { id: "linkedin", icon: FaLinkedin, label: "LinkedIn", labelKo: "LinkedIn", color: "#0077B5", type: "linkedin" },
-  { id: "threads", icon: ThreadsIcon, label: "Threads", labelKo: "Threads", color: "#000000", type: "threads" },
-  { id: "github", icon: FaGithub, label: "GitHub", labelKo: "GitHub", color: "#24292e", type: "open-source" },
-  { id: "reddit", icon: FaReddit, label: "Reddit", labelKo: "Reddit", color: "#FF4500", type: "reddit" },
+  {
+    id: "youtube",
+    icon: FaYoutube,
+    label: "YouTube",
+    labelKo: "YouTube",
+    color: "#FF0000",
+    type: "video",
+  },
+  {
+    id: "x",
+    icon: FaXTwitter,
+    label: "X",
+    labelKo: "트위터",
+    color: "#000000",
+    type: "x-thread",
+  },
+  {
+    id: "linkedin",
+    icon: FaLinkedin,
+    label: "LinkedIn",
+    labelKo: "LinkedIn",
+    color: "#0077B5",
+    type: "linkedin",
+  },
+  {
+    id: "threads",
+    icon: ThreadsIcon,
+    label: "Threads",
+    labelKo: "Threads",
+    color: "#000000",
+    type: "threads",
+  },
+  {
+    id: "github",
+    icon: FaGithub,
+    label: "GitHub",
+    labelKo: "GitHub",
+    color: "#24292e",
+    type: "open-source",
+  },
+  {
+    id: "reddit",
+    icon: FaReddit,
+    label: "Reddit",
+    labelKo: "Reddit",
+    color: "#FF4500",
+    type: "reddit",
+  },
 ];
 
 export default function LatestContentSection({
@@ -112,7 +154,11 @@ export default function LatestContentSection({
                 </div>
                 {platformContent.length > 0 && (
                   <Link href={`/content?type=${platform.type}`}>
-                    <Button variant="ghost" size="sm" className="flex-shrink-0 gap-1 whitespace-nowrap text-xs sm:text-sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-shrink-0 gap-1 whitespace-nowrap text-xs sm:text-sm"
+                    >
                       {locale === "ko" ? "모두보기" : "View all"}
                       <FaArrowRight size={10} />
                     </Button>
@@ -122,10 +168,13 @@ export default function LatestContentSection({
 
               {/* 콘텐츠 가로 스크롤 */}
               {platformContent.length > 0 ? (
-                <div className="relative">
-                  <div className="-mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-4 scrollbar-hide sm:mx-0 sm:gap-4 sm:px-0">
+                <div className="scrollbar-hide relative -mx-4 overflow-x-auto overscroll-x-contain sm:mx-0">
+                  <div className="flex w-max gap-3 px-4 pb-4 sm:gap-4 sm:px-0">
                     {platformContent.map((item) => (
-                      <div key={item.id} className="w-[280px] flex-shrink-0 sm:w-80 md:w-96">
+                      <div
+                        key={item.id}
+                        className="w-[280px] flex-shrink-0 sm:w-80 md:w-96"
+                      >
                         <SocialCardRenderer content={item} />
                       </div>
                     ))}

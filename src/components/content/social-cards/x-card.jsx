@@ -66,6 +66,8 @@ export default function XCard({
     twitterVideoUrl,
   };
 
+  const hasVideoContent = !!twitterVideoUrl || !!youtubeEmbedUrl;
+
   return (
     <>
       <BaseSocialCard
@@ -73,7 +75,7 @@ export default function XCard({
         platformIcon={FaXTwitter}
         externalUrl={externalUrl}
         className={className}
-        onClick={() => setModalOpen(true)}
+        onClick={hasVideoContent ? undefined : () => setModalOpen(true)}
       >
         {/* Author */}
         <AuthorInfo
@@ -91,7 +93,10 @@ export default function XCard({
               !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
             }`}
           >
-            {(locale === "ko" && translatedContent ? translatedContent : content)?.replace(/\\n/g, '\n')}
+            {(locale === "ko" && translatedContent
+              ? translatedContent
+              : content
+            )?.replace(/\\n/g, "\n")}
           </p>
           {/* 그라데이션 + 더보기 버튼 */}
           {isOverflowing && !expanded && (

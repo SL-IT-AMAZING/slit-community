@@ -17,6 +17,7 @@ import {
   FaArrowLeft,
   FaRss,
   FaXmark,
+  FaEnvelope,
 } from "react-icons/fa6";
 
 const navItems = [
@@ -37,6 +38,12 @@ const navItems = [
     nameKo: "크롤러",
     href: "/admin/crawler",
     icon: FaRss,
+  },
+  {
+    name: "Newsletter",
+    nameKo: "뉴스레터",
+    href: "/admin/newsletter",
+    icon: FaEnvelope,
   },
   {
     name: "Users",
@@ -84,7 +91,7 @@ export default function AdminSidebar({ isOpen = false, onClose }) {
         className={cn(
           "fixed left-0 top-0 z-40 h-dvh w-64 border-r bg-card transition-transform duration-300",
           "md:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-full flex-col">
@@ -112,23 +119,23 @@ export default function AdminSidebar({ isOpen = false, onClose }) {
             </div>
           </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                isActive(item.href)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <item.icon size={16} />
-              {locale === "ko" ? item.nameKo : item.name}
-            </Link>
-          ))}
-        </nav>
+          {/* Navigation */}
+          <nav className="flex-1 space-y-1 p-4">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  isActive(item.href)
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <item.icon size={16} />
+                {locale === "ko" ? item.nameKo : item.name}
+              </Link>
+            ))}
+          </nav>
 
           {/* Quick Actions */}
           <div className="border-t p-4">

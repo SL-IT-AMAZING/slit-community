@@ -2,11 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useLocale } from "next-intl";
-import {
-  FaReddit,
-  FaArrowUp,
-  FaAward,
-} from "react-icons/fa6";
+import { FaReddit, FaArrowUp, FaAward } from "react-icons/fa6";
 
 import BaseSocialCard, {
   AuthorInfo,
@@ -36,7 +32,8 @@ export default function RedditCard({
   className,
 }) {
   const locale = useLocale();
-  const upvoteRatio = upvotes && downvotes ? upvotes / (upvotes + downvotes) : 1;
+  const upvoteRatio =
+    upvotes && downvotes ? upvotes / (upvotes + downvotes) : 1;
 
   const [expanded, setExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -52,7 +49,8 @@ export default function RedditCard({
   }, [content, translatedContent, locale]);
 
   // 미디어 URL 배열 구성 (mediaUrl이 있으면 배열에 추가)
-  const allMediaUrls = mediaUrls.length > 0 ? mediaUrls : (mediaUrl ? [mediaUrl] : []);
+  const allMediaUrls =
+    mediaUrls.length > 0 ? mediaUrls : mediaUrl ? [mediaUrl] : [];
 
   const modalData = {
     title,
@@ -88,7 +86,7 @@ export default function RedditCard({
             <FaReddit size={14} />
           </div>
           <span className="text-sm font-semibold">r/{subreddit}</span>
-          <span className="text-sm text-muted-foreground">
+          <span className="hidden text-sm text-muted-foreground sm:inline">
             {locale === "ko" ? "에 게시됨" : "Posted by"}
           </span>
           <div className="flex items-center gap-1">
@@ -99,7 +97,9 @@ export default function RedditCard({
                 className="h-5 w-5 rounded-full object-cover"
               />
             ) : null}
-            <span className="text-sm text-muted-foreground">u/{authorName}</span>
+            <span className="text-sm text-muted-foreground">
+              u/{authorName}
+            </span>
           </div>
         </div>
 
@@ -114,10 +114,15 @@ export default function RedditCard({
             <p
               ref={contentRef}
               className={`whitespace-pre-wrap break-words text-sm text-muted-foreground transition-all ${
-                !expanded && isOverflowing ? "max-h-[120px] overflow-hidden" : ""
+                !expanded && isOverflowing
+                  ? "max-h-[120px] overflow-hidden"
+                  : ""
               }`}
             >
-              {(locale === "ko" && translatedContent ? translatedContent : content)?.replace(/\\n/g, '\n')}
+              {(locale === "ko" && translatedContent
+                ? translatedContent
+                : content
+              )?.replace(/\\n/g, "\n")}
             </p>
             {/* 그라데이션 + 더보기 버튼 */}
             {isOverflowing && !expanded && (
@@ -149,9 +154,7 @@ export default function RedditCard({
         )}
 
         {/* Media Grid */}
-        {allMediaUrls.length > 0 && (
-          <MediaGrid mediaUrls={allMediaUrls} />
-        )}
+        {allMediaUrls.length > 0 && <MediaGrid mediaUrls={allMediaUrls} />}
 
         {/* Awards */}
         {awards && awards.length > 0 && (
@@ -184,13 +187,16 @@ export default function RedditCard({
           <div className="flex items-center gap-1">
             <FaArrowUp size={16} className="text-orange-500" />
             <span className="text-sm font-semibold text-orange-500">
-              {upvotes >= 1000 ? `${(upvotes / 1000).toFixed(1)}k` : upvotes || 0}
+              {upvotes >= 1000
+                ? `${(upvotes / 1000).toFixed(1)}k`
+                : upvotes || 0}
             </span>
           </div>
 
           {/* Upvote Ratio */}
           <span className="text-xs text-muted-foreground">
-            {Math.round(upvoteRatio * 100)}% {locale === "ko" ? "추천" : "upvoted"}
+            {Math.round(upvoteRatio * 100)}%{" "}
+            {locale === "ko" ? "추천" : "upvoted"}
           </span>
         </div>
       </BaseSocialCard>
