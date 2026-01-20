@@ -67,7 +67,10 @@ export default async function NewsletterPage({ params }) {
                 <FaCalendar size={12} />
                 {t("valueProps.frequency")}
               </Badge>
-              <Badge variant="secondary" className="gap-1.5 px-3 py-1">
+              <Badge
+                variant="secondary"
+                className="hidden gap-1.5 px-3 py-1 sm:inline-flex"
+              >
                 <FaCheck size={12} />
                 {t("valueProps.free")}
               </Badge>

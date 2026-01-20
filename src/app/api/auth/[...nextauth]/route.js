@@ -7,11 +7,27 @@ async function getHandler() {
 }
 
 export async function GET(request, context) {
-  const handler = await getHandler();
-  return handler(request, context);
+  try {
+    const handler = await getHandler();
+    return handler(request, context);
+  } catch (error) {
+    console.error("[NextAuth] GET error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 export async function POST(request, context) {
-  const handler = await getHandler();
-  return handler(request, context);
+  try {
+    const handler = await getHandler();
+    return handler(request, context);
+  } catch (error) {
+    console.error("[NextAuth] POST error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
