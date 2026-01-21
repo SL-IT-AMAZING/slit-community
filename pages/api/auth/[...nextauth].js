@@ -1,24 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
-import { createClient } from "@supabase/supabase-js";
-
-let supabaseAdmin = null;
-
-function getSupabase() {
-  if (supabaseAdmin) return supabaseAdmin;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    console.error("Supabase admin credentials not configured");
-    return null;
-  }
-
-  supabaseAdmin = createClient(url, serviceKey);
-  return supabaseAdmin;
-}
 
 export const authOptions = {
   providers: [
@@ -37,23 +19,7 @@ export const authOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === "google" || account?.provider === "github") {
-        try {
-          const supabaseAdmin = getSupabase();
-          if (!supabaseAdmin) return true;
-          await supabaseAdmin.from("users").upsert(
-            {
-              email: user.email,
-              display_name: user.name,
-              photo_url: user.image,
-              provider: account.provider,
-            },
-            { onConflict: "email" },
-          );
-        } catch (error) {
-          console.error("Error syncing user to Supabase:", error);
-        }
-      }
+      // Supabase sync disabled for now - will add back after auth works
       return true;
     },
     async session({ session, token }) {
@@ -64,34 +30,9 @@ export const authOptions = {
       }
       return session;
     },
-    async jwt({ token, user, trigger, account }) {
-      if (user || trigger === "update" || (account && !token.role)) {
-        try {
-          const supabaseAdmin = getSupabase();
-          if (!supabaseAdmin) {
-            token.role = token.role ?? "user";
-            token.isPremium = token.isPremium ?? false;
-            return token;
-          }
-          const { data: profile } = await supabaseAdmin
-            .from("users")
-            .select("role, is_premium")
-            .eq("email", token.email)
-            .single();
-
-          if (profile) {
-            token.role = profile.role;
-            token.isPremium = profile.is_premium;
-          } else {
-            token.role = "user";
-            token.isPremium = false;
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          token.role = token.role ?? "user";
-          token.isPremium = token.isPremium ?? false;
-        }
-      }
+    async jwt({ token }) {
+      token.role = token.role ?? "user";
+      token.isPremium = token.isPremium ?? false;
       return token;
     },
   },
