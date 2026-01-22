@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 
-export const authOptions = {
+const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -18,8 +18,7 @@ export const authOptions = {
     error: "/login",
   },
   callbacks: {
-    async signIn({ user, account }) {
-      // Supabase sync disabled for now - will add back after auth works
+    async signIn() {
       return true;
     },
     async session({ session, token }) {
@@ -42,4 +41,6 @@ export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-export default NextAuth(authOptions);
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
