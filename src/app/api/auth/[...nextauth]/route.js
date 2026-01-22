@@ -1,20 +1,7 @@
-import NextAuth from "next-auth/next";
-import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
-
 export const dynamic = "force-dynamic";
 
 const authOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID ?? "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-    }),
-  ],
+  providers: [],
   pages: {
     signIn: "/login",
     error: "/login",
@@ -43,6 +30,33 @@ const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
+async function getHandler() {
+  const { default: NextAuth } = await import("next-auth");
+  const { default: GoogleProvider } =
+    await import("next-auth/providers/google");
+  const { default: GitHubProvider } =
+    await import("next-auth/providers/github");
 
-export { handler as GET, handler as POST };
+  authOptions.providers = [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_CLIENT_ID ?? "",
+      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+    }),
+  ];
+
+  return NextAuth(authOptions);
+}
+
+export async function GET(request) {
+  const handler = await getHandler();
+  return handler(request);
+}
+
+export async function POST(request) {
+  const handler = await getHandler();
+  return handler(request);
+}
