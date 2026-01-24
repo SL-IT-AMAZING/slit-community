@@ -1,9 +1,9 @@
 /**
  * YouTube 트랜스크립트 추출
- * youtube-transcript 패키지 사용
+ * youtube-caption-extractor 패키지 사용
  */
 
-import { YoutubeTranscript } from "youtube-transcript";
+import { getSubtitles } from "youtube-caption-extractor";
 
 /**
  * YouTube 비디오에서 트랜스크립트 추출
@@ -12,20 +12,38 @@ import { YoutubeTranscript } from "youtube-transcript";
  */
 export async function getTranscript(videoId) {
   try {
-    const segments = await YoutubeTranscript.fetchTranscript(videoId);
+    const subtitles = await getSubtitles({ videoID: videoId, lang: "en" });
 
-    // 전체 텍스트로 합치기
-    const fullText = segments.map((s) => s.text).join(" ");
+    if (!subtitles?.length) {
+      const koSubtitles = await getSubtitles({ videoID: videoId, lang: "ko" });
+      if (koSubtitles?.length) {
+        const segments = koSubtitles.map((s) => ({
+          offset: parseFloat(s.start) * 1000,
+          text: s.text,
+          duration: parseFloat(s.dur) * 1000,
+        }));
+        return {
+          text: segments.map((s) => s.text).join(" "),
+          segments,
+          success: true,
+        };
+      }
+    }
+
+    const segments = subtitles.map((s) => ({
+      offset: parseFloat(s.start) * 1000,
+      text: s.text,
+      duration: parseFloat(s.dur) * 1000,
+    }));
 
     return {
-      text: fullText,
+      text: segments.map((s) => s.text).join(" "),
       segments,
       success: true,
     };
   } catch (error) {
     console.error(`Failed to get transcript for ${videoId}:`, error.message);
 
-    // 트랜스크립트가 없는 경우도 있음 (비활성화, 언어 미지원 등)
     return {
       text: null,
       segments: [],
@@ -33,6 +51,25 @@ export async function getTranscript(videoId) {
       error: error.message,
     };
   }
+}
+
+/**
+ * 세그먼트를 타임스탬프 포함 텍스트로 포맷 (LLM 분석용)
+ * @param {Array} segments - [{offset: 90000, text: "..."}]
+ * @returns {string} - "[1:30] text\n[1:35] text..."
+ */
+export function formatTranscriptWithTimestamps(segments) {
+  if (!segments?.length) return "";
+
+  return segments
+    .map((seg) => {
+      const totalSec = Math.floor(seg.offset / 1000);
+      const min = Math.floor(totalSec / 60);
+      const sec = totalSec % 60;
+      const ts = `${min}:${sec.toString().padStart(2, "0")}`;
+      return `[${ts}] ${seg.text}`;
+    })
+    .join("\n");
 }
 
 /**

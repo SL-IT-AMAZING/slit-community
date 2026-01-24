@@ -30,6 +30,73 @@ import {
   FaCode,
 } from "react-icons/fa6";
 
+const OG_IMAGE_REGEX = [
+  /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+  /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+];
+
+async function fetchOgImage(url) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; OGBot/1.0)" },
+      next: { revalidate: 86400 },
+    });
+    const html = await response.text();
+
+    for (const pattern of OG_IMAGE_REGEX) {
+      const match = html.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getKnownPlatformOgImage(url) {
+  if (!url) return null;
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace(/^www\./, "");
+    const pathname = urlObj.pathname;
+
+    if (hostname === "github.com") {
+      const parts = pathname.split("/").filter(Boolean);
+      if (parts.length >= 2) {
+        return `https://opengraph.githubassets.com/1/${parts[0]}/${parts[1]}`;
+      }
+    }
+
+    if (hostname === "youtube.com" || hostname === "youtu.be") {
+      const videoId = urlObj.searchParams.get("v") || pathname.split("/").pop();
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function enrichContentWithThumbnails(contentList) {
+  return Promise.all(
+    contentList.map(async (content) => {
+      if (content.thumbnail_url) return content;
+
+      const knownOg = getKnownPlatformOgImage(content.external_url);
+      if (knownOg) return { ...content, thumbnail_url: knownOg };
+
+      const fetchedOg = await fetchOgImage(content.external_url);
+      if (fetchedOg) return { ...content, thumbnail_url: fetchedOg };
+
+      return content;
+    }),
+  );
+}
+
 const categories = [
   { id: "ai-basics", icon: FaRobot },
   { id: "llm", icon: FaBrain },
@@ -337,10 +404,11 @@ export default async function HomePage({ params }) {
     }
   }
 
-  // 최신 콘텐츠가 없으면 목데이터 사용
   if (latestContent.length === 0) {
     latestContent = MOCK_LATEST_CONTENT;
   }
+
+  featuredContent = await enrichContentWithThumbnails(featuredContent);
 
   return (
     <div className="container py-4 sm:py-6 md:py-8">

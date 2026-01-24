@@ -85,6 +85,50 @@ check();
 "
 ```
 
+### GitHub Token 필요 여부 확인 (Star History)
+
+GitHub 크롤링 후 Star History 스크린샷에 토큰이 필요한 경우 확인:
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function checkTokenNeeded() {
+  const { data } = await supabase
+    .from('crawled_content')
+    .select('id, title, raw_data')
+    .eq('platform', 'github')
+    .not('raw_data->needs_github_token', 'is', null);
+
+  if (data?.length > 0) {
+    console.log('⚠️ GitHub Token 필요: ' + data.length + '개 레포의 Star History 캡처 실패');
+    console.log('토큰 없이 캡처된 레포:', data.map(d => d.title).join(', '));
+    console.log('');
+    console.log('해결 방법:');
+    console.log('1. https://github.com/settings/tokens 에서 토큰 생성 (public_repo 권한)');
+    console.log('2. .env.local 파일에 GITHUB_TOKEN=ghp_xxx 추가');
+    console.log('3. GitHub 크롤러 다시 실행');
+  } else {
+    console.log('✅ 모든 GitHub 레포 Star History 정상 캡처됨');
+  }
+}
+checkTokenNeeded();
+"
+```
+
+**토큰 필요 시 사용자에게 요청:**
+
+Star History 캡처에 GitHub 토큰이 필요합니다. 토큰을 제공해주시면 `.env.local`에 저장하고 다시 크롤링하겠습니다.
+
+토큰 생성 방법:
+
+1. https://github.com/settings/tokens 접속
+2. "Generate new token (classic)" 클릭
+3. 권한: `public_repo` 선택
+4. 토큰 복사 후 제공
+
 ---
 
 ## Phase 2: 에이전트 직접 분석
@@ -103,8 +147,20 @@ Task 2 - Threads 분석:
 Task 3 - Reddit 분석:
   prompt: "/ownuun_reddit 실행하여 pending_analysis 상태의 Reddit 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
 
-Task 4 - YouTube 분석:
-  prompt: "/ownuun_youtube 배치 실행하여 pending 상태의 YouTube 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
+Task 4 - YouTube 분석 (⚠️ 상세 분석 필수):
+  prompt: |
+    /ownuun_youtube 실행. 반드시 아래 요구사항을 준수:
+
+    1. **자막 추출**: youtube-transcript.js의 getTranscript() + formatTranscriptWithTimestamps() 사용하여 타임스탬프 포함된 자막 추출
+    2. **timeline 필수 요구사항**:
+       - 최소 1500자 이상 작성
+       - 실제 타임스탬프 사용 (**0:00**, **1:30**, **7:20** 형식)
+       - 영상 내용의 90% 포함
+       - 계층 구조: 1. > 1.1. > 1.2. > 2.
+    3. **JSON 형식**: keyQA, intro, timeline, recommendScore, recommendReason, targetAudience 모두 포함
+    4. **품질 검증**: timeline.length < 1500이면 재분석
+
+    완료 후 분석 개수, 평균 점수, 평균 timeline 길이 반환.
 ```
 
 ### 분석 결과 확인
@@ -151,6 +207,14 @@ check();
 - **7점 이상**: 자동 게시
 - **7점 미만**: 목록 나열 → 사용자 선택
 - **GitHub**: 전부 게시
+
+### GitHub 게시 주의사항
+
+- **category**: 반드시 `open-source` 사용 (DB 제약조건: `content_category_check`)
+- **스크린샷 저장 위치**:
+  - `crawled_content.screenshot_url` → `content.social_metadata.readme_screenshot`
+  - `crawled_content.raw_data.star_history_screenshot` → `content.social_metadata.star_history_screenshot`
+  - `scripts/publish-batch.js`가 자동 처리
 
 ### Step 1: 게시 대상 조회
 

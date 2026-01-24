@@ -120,7 +120,10 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
       style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-card shadow-2xl"
+        className={cn(
+          "relative max-h-[90vh] w-full overflow-hidden rounded-xl bg-card shadow-2xl transition-all duration-300",
+          platform === "youtube" ? "max-w-4xl" : "max-w-2xl",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -177,7 +180,12 @@ export default function DetailModal({ isOpen, onClose, platform, data }) {
   return createPortal(modalContent, document.body);
 }
 
-// Parse timestamp string (HH:MM:SS or MM:SS) to seconds
+function extractVideoId(embedUrl) {
+  if (!embedUrl) return null;
+  const match = embedUrl.match(/embed\/([^?]+)/);
+  return match ? match[1] : null;
+}
+
 function parseTimestamp(ts) {
   if (!ts) return 0;
   const parts = ts.trim().split(":").map(Number);
@@ -204,22 +212,46 @@ function formatTimestamp(seconds) {
 function parseTimeline(timelineText) {
   if (!timelineText) return [];
 
-  // Split by timestamp patterns: "00:00:00 - 00:00:30" or "00:00 - 00:30"
-  const timestampRegex =
-    /(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)/g;
   const sections = [];
-  let lastIndex = 0;
-  let match;
 
-  const matches = [...timelineText.matchAll(timestampRegex)];
+  // Try new format first: "**0:00** - content" (bold timestamps)
+  const boldTimestampRegex = /\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*-\s*/g;
+  const boldMatches = [...timelineText.matchAll(boldTimestampRegex)];
 
-  for (let i = 0; i < matches.length; i++) {
-    match = matches[i];
+  if (boldMatches.length > 0) {
+    for (let i = 0; i < boldMatches.length; i++) {
+      const match = boldMatches[i];
+      const startTime = match[1];
+      const startIndex = match.index + match[0].length;
+      const endIndex =
+        i + 1 < boldMatches.length
+          ? boldMatches[i + 1].index
+          : timelineText.length;
+      const content = timelineText.slice(startIndex, endIndex).trim();
+
+      sections.push({
+        startTime,
+        startSeconds: parseTimestamp(startTime),
+        content: content.replace(/^\n+/, "").replace(/\n+$/, ""),
+      });
+    }
+    return sections;
+  }
+
+  // Fallback to old format: "00:00:00 - 00:00:30" or "00:00 - 00:30" (range)
+  const rangeTimestampRegex =
+    /(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)/g;
+  const rangeMatches = [...timelineText.matchAll(rangeTimestampRegex)];
+
+  for (let i = 0; i < rangeMatches.length; i++) {
+    const match = rangeMatches[i];
     const startTime = match[1];
     const endTime = match[2];
     const startIndex = match.index + match[0].length;
     const endIndex =
-      i + 1 < matches.length ? matches[i + 1].index : timelineText.length;
+      i + 1 < rangeMatches.length
+        ? rangeMatches[i + 1].index
+        : timelineText.length;
     const content = timelineText.slice(startIndex, endIndex).trim();
 
     sections.push({
@@ -235,35 +267,31 @@ function parseTimeline(timelineText) {
 
 function YouTubeDetail({ data, locale }) {
   const [showEmbed, setShowEmbed] = React.useState(false);
-  const iframeRef = React.useRef(null);
+  const [isVideoExpanded, setIsVideoExpanded] = React.useState(false);
+  const [startTime, setStartTime] = React.useState(0);
+  const videoContainerRef = React.useRef(null);
 
-  const embedUrl =
-    data.embedUrl ||
-    (data.videoId
-      ? `https://www.youtube.com/embed/${data.videoId}?autoplay=1&enablejsapi=1`
-      : null);
+  const embedUrl = React.useMemo(() => {
+    const videoId = data.videoId || extractVideoId(data.embedUrl);
+    if (!videoId) return null;
+    const params = new URLSearchParams({
+      autoplay: "1",
+      start: String(startTime),
+    });
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  }, [data.embedUrl, data.videoId, startTime]);
 
-  // Seek video to specific time
-  const seekTo = React.useCallback(
-    (seconds) => {
-      if (!showEmbed) {
-        // Start video at specific time
-        setShowEmbed(true);
-      }
-      // Use postMessage to control embedded YouTube player
-      if (iframeRef.current) {
-        iframeRef.current.contentWindow?.postMessage(
-          JSON.stringify({
-            event: "command",
-            func: "seekTo",
-            args: [seconds, true],
-          }),
-          "*",
-        );
-      }
-    },
-    [showEmbed],
-  );
+  const seekTo = React.useCallback((seconds) => {
+    setIsVideoExpanded(true);
+    setStartTime(seconds);
+    setShowEmbed(true);
+    setTimeout(() => {
+      videoContainerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  }, []);
 
   const digestResult = React.useMemo(() => {
     const digest = data.fullDigest || data.digestResult;
@@ -280,42 +308,70 @@ function YouTubeDetail({ data, locale }) {
 
   return (
     <div className="space-y-4">
-      <div className="relative aspect-video overflow-hidden rounded-lg border-2 border-border">
-        {showEmbed && embedUrl ? (
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            className="absolute inset-0 h-full w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
+      <div ref={videoContainerRef} className="relative">
+        {isVideoExpanded && (
           <button
-            onClick={() => setShowEmbed(true)}
-            className="group relative h-full w-full"
-            disabled={!embedUrl}
+            onClick={() => setIsVideoExpanded(false)}
+            className="absolute -top-2 right-0 z-10 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white transition-colors hover:bg-black/90"
           >
-            {data.thumbnailUrl && (
-              <img
-                src={data.thumbnailUrl}
-                alt={data.title}
-                className="h-full w-full object-cover"
+            <svg
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
               />
-            )}
-            {embedUrl && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="ml-1 h-8 w-8 fill-current"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-              </div>
-            )}
+            </svg>
+            {locale === "ko" ? "축소" : "Minimize"}
           </button>
         )}
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-lg border-2 border-border transition-all duration-300",
+            isVideoExpanded ? "aspect-[16/10]" : "aspect-video",
+          )}
+        >
+          {showEmbed && embedUrl ? (
+            <iframe
+              key={startTime}
+              src={embedUrl}
+              className="absolute inset-0 h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <button
+              onClick={() => setShowEmbed(true)}
+              className="group relative h-full w-full"
+              disabled={!embedUrl}
+            >
+              {data.thumbnailUrl && (
+                <img
+                  src={data.thumbnailUrl}
+                  alt={data.title}
+                  className="h-full w-full object-cover"
+                />
+              )}
+              {embedUrl && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="ml-1 h-8 w-8 fill-current"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       <AuthorInfo
