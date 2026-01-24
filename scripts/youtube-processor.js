@@ -17,7 +17,13 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
-import { getTranscript } from "../src/lib/youtube-transcript.js";
+import dotenv from "dotenv";
+import {
+  getTranscript,
+  formatTranscriptWithTimestamps,
+} from "../src/lib/youtube-transcript.js";
+
+dotenv.config({ path: ".env.local" });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -57,7 +63,7 @@ const ANALYSIS_PROMPT = `당신은 YouTube 영상 요약 전문가입니다. 영
     }
   },
   "intro": "영상 개요 2-3문단. 핵심 구성 요소와 목표를 설명. 예: 'Langchain에서 소개하는 X는 Y하는 혁신적인 접근 방식입니다.\\n\\n핵심 구성 요소: Z를 사용하여 W를 보여준다.\\n\\n목표: A에게 B를 부여하고, C를 추적하며 D를 구축하는 실용적인 인사이트를 제공한다.'",
-  "timeline": "상세 타임라인 노트 (계층 구조, captureSource 포함, 최소 1500자)\\n\\n1. 대섹션 제목\\ncaptureSource\\n핵심 내용 1-2문장\\n\\n[하위 주제 A]:\\n- 세부 내용 1\\n- 세부 내용 2\\n\\n1.1. 소섹션 제목\\ncaptureSource\\n소섹션 설명\\n\\n- 불릿 포인트들\\n\\n2. 다음 대섹션\\ncaptureSource\\n...",
+  "timeline": "상세 타임라인 노트 (타임스탬프 기반, 최소 1500자)\\n\\n**0:00** - 인트로\\n영상 소개 및 개요\\n\\n**1:30** - 1. 대섹션 제목\\n핵심 내용 1-2문장\\n\\n[하위 주제 A]:\\n- 세부 내용 1\\n- 세부 내용 2\\n\\n**3:45** - 1.1. 소섹션 제목\\n소섹션 설명\\n\\n- 불릿 포인트들\\n\\n**7:20** - 2. 다음 대섹션\\n...",
   "recommendScore": 8,
   "recommendReason": "추천 이유 1-2문장",
   "targetAudience": "이 영상이 도움될 대상"
@@ -79,8 +85,9 @@ const ANALYSIS_PROMPT = `당신은 YouTube 영상 요약 전문가입니다. 영
 
 ### timeline (상세 타임라인) - 가장 중요!
 - **최소 1500자 이상** 작성
+- **실제 타임스탬프 사용**: 자막의 [M:SS] 형식을 참고하여 각 섹션 시작 시간을 **0:00**, **1:30**, **7:20** 형식으로 표기
+- 형식: **타임스탬프** - 섹션 제목\\n내용
 - 계층 구조 엄격 준수: 1. > 1.1. > 1.2. > 2. > 2.1.
-- 각 섹션마다 captureSource 태그 포함
 - 구체적인 내용, 예시, 인용 포함
 - 영상의 90% 내용을 담아야 함
 
@@ -152,11 +159,16 @@ async function processVideo(content) {
     log(`Extracting transcript for ${platform_id}...`);
     const transcriptResult = await getTranscript(platform_id);
 
-    if (!transcriptResult?.text) {
+    if (!transcriptResult?.segments?.length) {
       throw new Error("Failed to extract transcript");
     }
 
-    log(`Transcript extracted: ${transcriptResult.text.length} characters`);
+    const timestampedTranscript = formatTranscriptWithTimestamps(
+      transcriptResult.segments,
+    );
+    log(
+      `Transcript extracted: ${timestampedTranscript.length} characters (with timestamps)`,
+    );
 
     // 3. 분석 수행
     log(`Analyzing with Claude...`);
@@ -164,7 +176,7 @@ async function processVideo(content) {
       title,
       author_name,
       url,
-      transcriptResult.text,
+      timestampedTranscript,
     );
 
     // 4. 결과 저장

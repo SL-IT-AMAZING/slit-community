@@ -2,9 +2,9 @@ import { chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 import { logCrawl, getScreenshotDir } from "./index.js";
+import { uploadBufferToR2, isR2Configured } from "../storage/r2.js";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase Storage 클라이언트 (비디오 업로드용)
 let supabaseStorage = null;
 
 function getSupabaseStorage() {
@@ -18,41 +18,41 @@ function getSupabaseStorage() {
   return supabaseStorage;
 }
 
-/**
- * 비디오를 Supabase Storage에 업로드
- * @param {Buffer} videoBuffer - 비디오 데이터
- * @param {string} filename - 파일명 (예: video_123456.mp4)
- * @param {string} platform - 플랫폼 (x, threads)
- * @returns {Promise<string|null>} 업로드된 퍼블릭 URL 또는 null
- */
 async function uploadVideoToStorage(videoBuffer, filename, platform) {
+  const storagePath = `videos/${platform}/${filename}`;
+
+  if (isR2Configured()) {
+    const r2Url = await uploadBufferToR2(videoBuffer, storagePath, "video/mp4");
+    if (r2Url) {
+      logCrawl(platform, `Video uploaded to R2: ${filename}`);
+      return r2Url;
+    }
+  }
+
   const supabase = getSupabaseStorage();
   if (!supabase) {
-    logCrawl(platform, "Supabase Storage not configured, skipping upload");
+    logCrawl(platform, "Storage not configured, skipping upload");
     return null;
   }
 
   try {
     const filePath = `${platform}/${filename}`;
-
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("videos")
       .upload(filePath, videoBuffer, {
         contentType: "video/mp4",
-        upsert: true, // 덮어쓰기 허용
+        upsert: true,
       });
 
     if (error) {
-      logCrawl(platform, `Storage upload error: ${error.message}`);
+      logCrawl(platform, `Supabase upload error: ${error.message}`);
       return null;
     }
 
-    // 퍼블릭 URL 생성
     const { data: urlData } = supabase.storage
       .from("videos")
       .getPublicUrl(filePath);
-
-    logCrawl(platform, `Video uploaded to Storage: ${filename}`);
+    logCrawl(platform, `Video uploaded to Supabase: ${filename}`);
     return urlData.publicUrl;
   } catch (err) {
     logCrawl(platform, `Storage upload failed: ${err.message}`);
@@ -99,7 +99,12 @@ function normalizeCookies(cookies) {
  * @param {{dir: string, urlPrefix: string}} screenshotInfo - 스크린샷 저장 정보
  * @returns {Promise<{screenshot: string, links: Array}>}
  */
-export async function crawlWithScreenshot(platform, url, cookies, screenshotInfo) {
+export async function crawlWithScreenshot(
+  platform,
+  url,
+  cookies,
+  screenshotInfo,
+) {
   logCrawl(platform, `Starting screenshot crawl for ${url}`);
 
   const browser = await chromium.launch({
@@ -217,7 +222,10 @@ async function scrollAndCollect(page, platform) {
     if (newLinks === 0 && newPosts === 0) {
       noNewContentCount++;
       if (noNewContentCount >= maxNoNewContent) {
-        logCrawl(platform, `No new content after ${cycle + 1} scrolls, stopping early`);
+        logCrawl(
+          platform,
+          `No new content after ${cycle + 1} scrolls, stopping early`,
+        );
         break;
       }
     } else {
@@ -243,7 +251,7 @@ async function collectCurrentLinks(page, linkMap) {
     anchors.map((a) => ({
       href: a.href,
       text: a.innerText?.slice(0, 200) || "",
-    }))
+    })),
   );
 
   links.forEach((link) => {
@@ -264,24 +272,27 @@ async function collectCurrentPosts(page, platform, postMap) {
       posts = await page.$$eval('article[data-testid="tweet"]', (articles) =>
         articles.map((article) => ({
           text: article.innerText?.slice(0, 1000) || "",
-        }))
+        })),
       );
     } else if (platform === "threads") {
       // 더 안정적인 구조 기반 셀렉터 사용
-      posts = await page.$$eval('div[data-pressable-container="true"]', (containers) => {
-        const results = [];
-        containers.forEach((container) => {
-          const textEl = container.querySelector('div[dir="auto"]');
-          const postLink = container.querySelector('a[href*="/post/"]');
-          if (textEl && postLink) {
-            results.push({
-              text: textEl.innerText?.slice(0, 1000) || "",
-              url: postLink.href,
-            });
-          }
-        });
-        return results;
-      });
+      posts = await page.$$eval(
+        'div[data-pressable-container="true"]',
+        (containers) => {
+          const results = [];
+          containers.forEach((container) => {
+            const textEl = container.querySelector('div[dir="auto"]');
+            const postLink = container.querySelector('a[href*="/post/"]');
+            if (textEl && postLink) {
+              results.push({
+                text: textEl.innerText?.slice(0, 1000) || "",
+                url: postLink.href,
+              });
+            }
+          });
+          return results;
+        },
+      );
     }
 
     posts.forEach((post) => {
@@ -303,7 +314,12 @@ async function collectCurrentPosts(page, platform, postMap) {
  * @param {{dir: string, urlPrefix: string}} screenshotInfo - 스크린샷 저장 정보
  * @returns {Promise<{content: string, metrics: Object}>}
  */
-export async function fetchPostDetails(platform, postUrl, cookies, screenshotInfo) {
+export async function fetchPostDetails(
+  platform,
+  postUrl,
+  cookies,
+  screenshotInfo,
+) {
   const browser = await chromium.launch({
     headless: true,
     args: [
@@ -328,7 +344,8 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
     const page = await context.newPage();
 
     // 포스트 ID 추출 (API 응답 필터링에 사용)
-    const postIdMatch = postUrl.match(/\/status\/(\d+)/) || postUrl.match(/\/post\/([^/?]+)/);
+    const postIdMatch =
+      postUrl.match(/\/status\/(\d+)/) || postUrl.match(/\/post\/([^/?]+)/);
     const postId = postIdMatch ? postIdMatch[1] : String(Date.now());
 
     // X 플랫폼인 경우 API 응답에서 YouTube URL 및 Twitter 네이티브 비디오 URL 인터셉트
@@ -346,7 +363,8 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
               const data = JSON.parse(text);
               // TweetDetail 응답에서 현재 트윗의 rest_id 확인
               const tweetResult = data?.data?.tweetResult?.result;
-              const restId = tweetResult?.rest_id || tweetResult?.tweet?.rest_id;
+              const restId =
+                tweetResult?.rest_id || tweetResult?.tweet?.rest_id;
 
               // 현재 트윗과 일치하는 경우에만 비디오 URL 추출 (댓글 제외)
               if (restId === postId) {
@@ -358,7 +376,7 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
                 for (const pattern of videoPatterns) {
                   const matches = text.matchAll(pattern);
                   for (const match of matches) {
-                    let videoUrl = match[0].replace(/\\/g, '');
+                    let videoUrl = match[0].replace(/\\/g, "");
                     if (!twitterVideoUrls.includes(videoUrl)) {
                       twitterVideoUrls.push(videoUrl);
                       logCrawl(platform, `Video matched for tweet ${postId}`);
@@ -376,7 +394,7 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
                 for (const pattern of videoPatterns) {
                   const matches = text.matchAll(pattern);
                   for (const match of matches) {
-                    let videoUrl = match[0].replace(/\\/g, '');
+                    let videoUrl = match[0].replace(/\\/g, "");
                     if (!twitterVideoUrls.includes(videoUrl)) {
                       twitterVideoUrls.push(videoUrl);
                     }
@@ -391,7 +409,9 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
               apiYoutubeUrl = `https://youtu.be/${shortMatch[1]}`;
             }
             // youtube.com/watch?v=VIDEO_ID 패턴 찾기
-            const watchMatch = text.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/);
+            const watchMatch = text.match(
+              /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+            );
             if (watchMatch && !apiYoutubeUrl) {
               apiYoutubeUrl = `https://www.youtube.com/watch?v=${watchMatch[1]}`;
             }
@@ -403,24 +423,30 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
     }
 
     await page.goto(postUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(5000);  // 5초 대기 (로딩 완료)
+    await page.waitForTimeout(5000); // 5초 대기 (로딩 완료)
 
     // 클립 설정 (본문 전체가 보이도록 왼쪽부터 캡처)
     const viewportWidth = 1280;
     const viewportHeight = 800;
     const contentWidth = platform === "threads" ? 700 : 650;
-    const clipX = platform === "threads" ? 290 : 250;  // 왼쪽으로 이동
-    const clipConfig = { x: clipX, y: 0, width: contentWidth, height: viewportHeight };
+    const clipX = platform === "threads" ? 290 : 250; // 왼쪽으로 이동
+    const clipConfig = {
+      x: clipX,
+      y: 0,
+      width: contentWidth,
+      height: viewportHeight,
+    };
 
     // 메트릭스 셀렉터
-    const metricsSelector = platform === "x"
-      ? 'article[data-testid="tweet"] [role="group"]'
-      : 'div[data-pressable-container="true"]';
+    const metricsSelector =
+      platform === "x"
+        ? 'article[data-testid="tweet"] [role="group"]'
+        : 'div[data-pressable-container="true"]';
 
     // 메트릭스가 보일 때까지 스크린샷 캡처 (최대 8번, 모두 저장)
     const screenshots = [];
     const maxAttempts = 8;
-    const scrollStep = 700;  // 스크롤 단계 증가
+    const scrollStep = 700; // 스크롤 단계 증가
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // 스크린샷 캡처
@@ -458,7 +484,7 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
       content: "",
       metrics: {},
       screenshotUrl: screenshots[0], // 첫 번째 스크린샷 (대표)
-      screenshotUrls: screenshots,   // 모든 스크린샷
+      screenshotUrls: screenshots, // 모든 스크린샷
     };
 
     if (platform === "x") {
@@ -482,7 +508,10 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
         if (selectedVideo) {
           result.twitterVideoUrl = selectedVideo;
           result.hasVideo = true;
-          logCrawl(platform, `Twitter video found: ${selectedVideo.substring(0, 80)}...`);
+          logCrawl(
+            platform,
+            `Twitter video found: ${selectedVideo.substring(0, 80)}...`,
+          );
         }
       }
     } else if (platform === "threads") {
@@ -499,14 +528,19 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
           const response = await fetch(mediaUrl);
           if (response.ok) {
             const buffer = await response.arrayBuffer();
-            const ext = mediaUrl.includes('.png') ? 'png' : 'jpg';
+            const ext = mediaUrl.includes(".png") ? "png" : "jpg";
             const mediaFilename = `media_${postId}_${i}.${ext}`;
             const mediaPath = path.join(screenshotInfo.dir, mediaFilename);
             fs.writeFileSync(mediaPath, Buffer.from(buffer));
-            downloadedMedia.push(`${screenshotInfo.urlPrefix}/${mediaFilename}`);
+            downloadedMedia.push(
+              `${screenshotInfo.urlPrefix}/${mediaFilename}`,
+            );
             logCrawl(platform, `Media downloaded: ${mediaFilename}`);
           } else {
-            logCrawl(platform, `Media download failed (${response.status}): ${mediaUrl.substring(0, 80)}`);
+            logCrawl(
+              platform,
+              `Media download failed (${response.status}): ${mediaUrl.substring(0, 80)}`,
+            );
           }
         } catch (err) {
           logCrawl(platform, `Failed to download media: ${err.message}`);
@@ -515,7 +549,7 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
       result.downloadedMedia = downloadedMedia;
     }
 
-    // Twitter 비디오 다운로드 → Supabase Storage 업로드
+    // Twitter 비디오 다운로드 → Storage 업로드 (R2 우선)
     if (result.twitterVideoUrl && platform === "x") {
       try {
         logCrawl(platform, `Downloading Twitter video...`);
@@ -523,21 +557,29 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
         if (videoResponse.ok) {
           const videoBuffer = await videoResponse.arrayBuffer();
           const videoFilename = `video_${postId}.mp4`;
-          const sizeMB = Math.round(videoBuffer.byteLength / 1024 / 1024 * 10) / 10;
+          const sizeMB =
+            Math.round((videoBuffer.byteLength / 1024 / 1024) * 10) / 10;
           logCrawl(platform, `Video fetched: ${videoFilename} (${sizeMB}MB)`);
 
-          // Supabase Storage에 업로드 시도
-          const storageUrl = await uploadVideoToStorage(Buffer.from(videoBuffer), videoFilename, platform);
+          // Storage 업로드 (R2 우선)
+          const storageUrl = await uploadVideoToStorage(
+            Buffer.from(videoBuffer),
+            videoFilename,
+            platform,
+          );
 
           if (storageUrl) {
             result.downloadedVideoUrl = storageUrl;
-            logCrawl(platform, `Video uploaded to Supabase: ${storageUrl}`);
+            logCrawl(platform, `Video uploaded: ${storageUrl}`);
           } else {
             // Storage 실패 시 로컬에 폴백 저장
             const videoPath = path.join(screenshotInfo.dir, videoFilename);
             fs.writeFileSync(videoPath, Buffer.from(videoBuffer));
             result.downloadedVideoUrl = `${screenshotInfo.urlPrefix}/${videoFilename}`;
-            logCrawl(platform, `Video saved locally (fallback): ${videoFilename}`);
+            logCrawl(
+              platform,
+              `Video saved locally (fallback): ${videoFilename}`,
+            );
           }
         }
       } catch (err) {
@@ -545,7 +587,7 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
       }
     }
 
-    // Threads 비디오 다운로드 → Supabase Storage 업로드
+    // Threads 비디오 다운로드 → Storage 업로드 (R2 우선)
     if (result.threadsVideoUrl && platform === "threads") {
       try {
         logCrawl(platform, `Downloading Threads video...`);
@@ -553,21 +595,29 @@ export async function fetchPostDetails(platform, postUrl, cookies, screenshotInf
         if (videoResponse.ok) {
           const videoBuffer = await videoResponse.arrayBuffer();
           const videoFilename = `video_${postId}.mp4`;
-          const sizeMB = Math.round(videoBuffer.byteLength / 1024 / 1024 * 10) / 10;
+          const sizeMB =
+            Math.round((videoBuffer.byteLength / 1024 / 1024) * 10) / 10;
           logCrawl(platform, `Video fetched: ${videoFilename} (${sizeMB}MB)`);
 
-          // Supabase Storage에 업로드 시도
-          const storageUrl = await uploadVideoToStorage(Buffer.from(videoBuffer), videoFilename, platform);
+          // Storage 업로드 (R2 우선)
+          const storageUrl = await uploadVideoToStorage(
+            Buffer.from(videoBuffer),
+            videoFilename,
+            platform,
+          );
 
           if (storageUrl) {
             result.downloadedVideoUrl = storageUrl;
-            logCrawl(platform, `Video uploaded to Supabase: ${storageUrl}`);
+            logCrawl(platform, `Video uploaded: ${storageUrl}`);
           } else {
             // Storage 실패 시 로컬에 폴백 저장
             const videoPath = path.join(screenshotInfo.dir, videoFilename);
             fs.writeFileSync(videoPath, Buffer.from(videoBuffer));
             result.downloadedVideoUrl = `${screenshotInfo.urlPrefix}/${videoFilename}`;
-            logCrawl(platform, `Video saved locally (fallback): ${videoFilename}`);
+            logCrawl(
+              platform,
+              `Video saved locally (fallback): ${videoFilename}`,
+            );
           }
         }
       } catch (err) {
@@ -590,14 +640,14 @@ function selectBestVideoUrl(videoUrls) {
   if (!videoUrls || videoUrls.length === 0) return null;
 
   // mp4 URL만 필터링
-  const mp4Urls = videoUrls.filter(url => url.includes('.mp4'));
+  const mp4Urls = videoUrls.filter((url) => url.includes(".mp4"));
   if (mp4Urls.length === 0) return videoUrls[0];
 
   // 해상도별 우선순위 (1080p > 720p > 다른 것)
-  const resolutionOrder = ['1920x1080', '1280x720', '640x360', '480x270'];
+  const resolutionOrder = ["1920x1080", "1280x720", "640x360", "480x270"];
 
   for (const res of resolutionOrder) {
-    const match = mp4Urls.find(url => url.includes(res));
+    const match = mp4Urls.find((url) => url.includes(res));
     if (match) return match;
   }
 
@@ -612,7 +662,9 @@ function extractYouTubeVideoId(url) {
   if (!url) return null;
 
   // youtube.com/watch?v=VIDEO_ID
-  const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.*&v=)([a-zA-Z0-9_-]{11})/);
+  const watchMatch = url.match(
+    /(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.*&v=)([a-zA-Z0-9_-]{11})/,
+  );
   if (watchMatch) return watchMatch[1];
 
   // youtu.be/VIDEO_ID
@@ -642,11 +694,13 @@ async function extractXPostDetails(page) {
       if (!article) return { mediaUrls, externalLinks, youtubeUrl };
 
       // 이미지 추출
-      const mediaImages = article.querySelectorAll('div[data-testid="tweetPhoto"] img');
+      const mediaImages = article.querySelectorAll(
+        'div[data-testid="tweetPhoto"] img',
+      );
       mediaImages.forEach((img) => {
         const src = img.src;
-        if (src && !src.includes('profile_images') && !src.includes('emoji')) {
-          const highQualitySrc = src.replace(/&name=\w+/, '&name=large');
+        if (src && !src.includes("profile_images") && !src.includes("emoji")) {
+          const highQualitySrc = src.replace(/&name=\w+/, "&name=large");
           if (!seenUrls.has(highQualitySrc)) {
             mediaUrls.push(highQualitySrc);
             seenUrls.add(highQualitySrc);
@@ -655,28 +709,32 @@ async function extractXPostDetails(page) {
       });
 
       // 비디오 여부만 확인 (포스터는 저장 안 함 - 실제 비디오 재생하므로 불필요)
-      const hasVideo = article.querySelectorAll('video[poster]').length > 0;
+      const hasVideo = article.querySelectorAll("video[poster]").length > 0;
 
       // YouTube 카드 감지 (X에 임베드된 YouTube 영상)
       // 1. 직접 href에 YouTube URL이 있는 경우
-      const youtubeCard = article.querySelector('a[href*="youtube.com"], a[href*="youtu.be"]');
+      const youtubeCard = article.querySelector(
+        'a[href*="youtube.com"], a[href*="youtu.be"]',
+      );
       if (youtubeCard) {
         youtubeUrl = youtubeCard.href;
       }
 
       // 2. "youtu.be 방문하기" 같은 텍스트가 있는 링크 감지
       if (!youtubeUrl) {
-        const allLinks = article.querySelectorAll('a');
+        const allLinks = article.querySelectorAll("a");
         allLinks.forEach((a) => {
-          const text = a.innerText?.toLowerCase() || '';
-          const href = a.href || '';
+          const text = a.innerText?.toLowerCase() || "";
+          const href = a.href || "";
           // 텍스트에 youtu.be 또는 youtube가 포함된 경우
-          if (text.includes('youtu.be') || text.includes('youtube')) {
+          if (text.includes("youtu.be") || text.includes("youtube")) {
             // t.co 링크인 경우 텍스트에서 URL 추출
-            if (href.includes('t.co')) {
-              const urlMatch = text.match(/(youtu\.be\/[a-zA-Z0-9_-]+|youtube\.com\/watch\?v=[a-zA-Z0-9_-]+)/i);
+            if (href.includes("t.co")) {
+              const urlMatch = text.match(
+                /(youtu\.be\/[a-zA-Z0-9_-]+|youtube\.com\/watch\?v=[a-zA-Z0-9_-]+)/i,
+              );
               if (urlMatch) {
-                youtubeUrl = 'https://' + urlMatch[1];
+                youtubeUrl = "https://" + urlMatch[1];
               }
             } else {
               youtubeUrl = href;
@@ -687,10 +745,10 @@ async function extractXPostDetails(page) {
 
       // 3. 카드 영역에서 YouTube 도메인 텍스트 감지
       if (!youtubeUrl) {
-        const cardText = article.innerText || '';
+        const cardText = article.innerText || "";
         const youtubeMatch = cardText.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
         if (youtubeMatch) {
-          youtubeUrl = 'https://youtu.be/' + youtubeMatch[1];
+          youtubeUrl = "https://youtu.be/" + youtubeMatch[1];
         }
       }
 
@@ -700,15 +758,19 @@ async function extractXPostDetails(page) {
         // X는 링크의 실제 URL을 표시 텍스트나 title에 보여줌
         const displayedUrl = a.innerText?.trim();
         // t.co가 아닌 실제 URL이 표시되어 있으면 그것을 사용
-        if (displayedUrl && !displayedUrl.includes('t.co') && displayedUrl.includes('.')) {
+        if (
+          displayedUrl &&
+          !displayedUrl.includes("t.co") &&
+          displayedUrl.includes(".")
+        ) {
           // 프로토콜 추가
           let fullUrl = displayedUrl;
-          if (!fullUrl.startsWith('http')) {
-            fullUrl = 'https://' + fullUrl;
+          if (!fullUrl.startsWith("http")) {
+            fullUrl = "https://" + fullUrl;
           }
 
           // YouTube URL 감지
-          if (fullUrl.includes('youtube.com') || fullUrl.includes('youtu.be')) {
+          if (fullUrl.includes("youtube.com") || fullUrl.includes("youtu.be")) {
             if (!youtubeUrl) {
               youtubeUrl = fullUrl;
             }
@@ -719,7 +781,7 @@ async function extractXPostDetails(page) {
             externalLinks.push({
               url: fullUrl,
               text: displayedUrl,
-              shortUrl: a.href
+              shortUrl: a.href,
             });
             seenUrls.add(fullUrl);
           }
@@ -740,7 +802,13 @@ async function extractXPostDetails(page) {
 
     return result;
   } catch (error) {
-    return { mediaUrls: [], externalLinks: [], hasVideo: false, youtubeUrl: null, error: error.message };
+    return {
+      mediaUrls: [],
+      externalLinks: [],
+      hasVideo: false,
+      youtubeUrl: null,
+      error: error.message,
+    };
   }
 }
 
@@ -758,9 +826,9 @@ async function extractThreadsPostDetails(page) {
       // 이미지 추출 (다양한 CDN 패턴 지원)
       const imageSelectors = [
         'img[src*="cdninstagram.com"]',
-        'img[src*="scontent"]',          // Instagram 대체 CDN
-        'img[src*="fbcdn.net"]',         // Facebook CDN
-      ].join(',');
+        'img[src*="scontent"]', // Instagram 대체 CDN
+        'img[src*="fbcdn.net"]', // Facebook CDN
+      ].join(",");
 
       const images = document.querySelectorAll(imageSelectors);
       images.forEach((img) => {
@@ -768,8 +836,11 @@ async function extractThreadsPostDetails(page) {
         if (!src) return;
 
         // 프로필/이모지/아이콘 필터링
-        const isProfile = src.includes('150x150') || src.includes('44x44') || src.includes('profile');
-        const isEmoji = src.includes('emoji') || src.includes('static');
+        const isProfile =
+          src.includes("150x150") ||
+          src.includes("44x44") ||
+          src.includes("profile");
+        const isEmoji = src.includes("emoji") || src.includes("static");
         const isIcon = img.width < 50 || img.height < 50;
 
         if (!isProfile && !isEmoji && !isIcon && !seenUrls.has(src)) {
@@ -779,20 +850,22 @@ async function extractThreadsPostDetails(page) {
       });
 
       // 비디오 여부만 확인 (포스터는 저장 안 함 - 실제 비디오 재생하므로 불필요)
-      const hasVideo = document.querySelectorAll('video[poster]').length > 0;
+      const hasVideo = document.querySelectorAll("video[poster]").length > 0;
 
       // 외부 링크 추출 (l.threads.com 리다이렉트 디코딩)
-      const links = document.querySelectorAll('a[href*="l.threads.com"], a[href*="l.instagram.com"]');
+      const links = document.querySelectorAll(
+        'a[href*="l.threads.com"], a[href*="l.instagram.com"]',
+      );
       links.forEach((a) => {
         try {
           const url = new URL(a.href);
-          const targetUrl = url.searchParams.get('u');
+          const targetUrl = url.searchParams.get("u");
           if (targetUrl) {
             const decodedUrl = decodeURIComponent(targetUrl);
             if (!seenUrls.has(decodedUrl)) {
               externalLinks.push({
                 url: decodedUrl,
-                text: a.innerText?.trim().slice(0, 100) || ''
+                text: a.innerText?.trim().slice(0, 100) || "",
               });
               seenUrls.add(decodedUrl);
             }
@@ -807,7 +880,12 @@ async function extractThreadsPostDetails(page) {
 
     return result;
   } catch (error) {
-    return { mediaUrls: [], externalLinks: [], hasVideo: false, error: error.message };
+    return {
+      mediaUrls: [],
+      externalLinks: [],
+      hasVideo: false,
+      error: error.message,
+    };
   }
 }
 
@@ -816,7 +894,9 @@ async function extractThreadsPostDetails(page) {
  */
 function filterExpiredCookies(cookies, platform) {
   const now = Date.now() / 1000;
-  const validCookies = cookies.filter(c => !c.expirationDate || c.expirationDate > now);
+  const validCookies = cookies.filter(
+    (c) => !c.expirationDate || c.expirationDate > now,
+  );
 
   if (validCookies.length < cookies.length) {
     const expiredCount = cookies.length - validCookies.length;

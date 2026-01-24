@@ -1,11 +1,91 @@
 import { getSupabaseAdmin } from "../supabase/admin.js";
 import { extractAndUpdateContent } from "./content-extractor.js";
+import { uploadToR2, isR2Configured } from "../storage/r2.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOT_BASE_DIR = path.join(__dirname, "../../../public/screenshots");
+
+export async function uploadToSupabaseStorage(source, storagePath) {
+  if (isR2Configured()) {
+    return uploadToR2(source, storagePath);
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  try {
+    let fileBuffer;
+    let contentType = "image/png";
+
+    if (source.startsWith("http://") || source.startsWith("https://")) {
+      const response = await fetch(source, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        },
+      });
+
+      if (!response.ok) {
+        logCrawl("storage", `Failed to fetch ${source}: ${response.status}`);
+        return null;
+      }
+
+      fileBuffer = Buffer.from(await response.arrayBuffer());
+      contentType = response.headers.get("content-type") || "image/png";
+    } else {
+      let fullPath;
+      if (source.startsWith("/screenshots/")) {
+        fullPath = path.join(__dirname, "../../../public", source);
+      } else if (path.isAbsolute(source)) {
+        fullPath = source;
+      } else {
+        fullPath = path.join(__dirname, "../../../public", source);
+      }
+
+      if (!fs.existsSync(fullPath)) {
+        logCrawl("storage", `File not found: ${fullPath}`);
+        return null;
+      }
+
+      fileBuffer = fs.readFileSync(fullPath);
+      const ext = path.extname(fullPath).toLowerCase();
+      contentType =
+        ext === ".jpg" || ext === ".jpeg"
+          ? "image/jpeg"
+          : ext === ".png"
+            ? "image/png"
+            : ext === ".webp"
+              ? "image/webp"
+              : ext === ".svg"
+                ? "image/svg+xml"
+                : "image/png";
+    }
+
+    const { error: uploadError } = await supabase.storage
+      .from("screenshots")
+      .upload(storagePath, fileBuffer, { contentType, upsert: true });
+
+    if (uploadError) {
+      logCrawl(
+        "storage",
+        `Upload failed: ${storagePath} - ${uploadError.message}`,
+      );
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("screenshots")
+      .getPublicUrl(storagePath);
+
+    logCrawl("storage", `Uploaded: ${storagePath}`);
+    return urlData.publicUrl;
+  } catch (error) {
+    logCrawl("storage", `Error uploading ${source}: ${error.message}`);
+    return null;
+  }
+}
 
 /**
  * 플랫폼별 타임스탬프 폴더 경로 생성
@@ -14,7 +94,9 @@ const SCREENSHOT_BASE_DIR = path.join(__dirname, "../../../public/screenshots");
  * @returns {{dir: string, urlPrefix: string}} 디렉토리 경로와 URL prefix
  */
 export function getScreenshotDir(platform, timestamp) {
-  const ts = timestamp || new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "-");
+  const ts =
+    timestamp ||
+    new Date().toISOString().slice(0, 16).replace("T", "_").replace(":", "-");
   const dir = path.join(SCREENSHOT_BASE_DIR, platform, ts);
 
   // 디렉토리 생성
@@ -42,7 +124,7 @@ export async function upsertCrawledContent(items, { autoExtract = true } = {}) {
     .from("crawled_content")
     .upsert(items, {
       onConflict: "platform,platform_id",
-      ignoreDuplicates: false,  // 기존 레코드도 업데이트 (raw_data 포함)
+      ignoreDuplicates: false, // 기존 레코드도 업데이트 (raw_data 포함)
     })
     .select();
 
@@ -146,7 +228,10 @@ function mergeRanking(existing, incoming) {
  * @param {boolean} options.autoExtract - 자동 본문 추출 여부 (기본: false for github)
  * @returns {Promise<{data, error}>}
  */
-export async function upsertWithRankingMerge(items, { autoExtract = false } = {}) {
+export async function upsertWithRankingMerge(
+  items,
+  { autoExtract = false } = {},
+) {
   const supabase = getSupabaseAdmin();
 
   // 1. 기존 레코드 조회
@@ -166,7 +251,7 @@ export async function upsertWithRankingMerge(items, { autoExtract = false } = {}
 
   // 기존 레코드를 Map으로 변환
   const existingMap = new Map(
-    existingRecords?.map((r) => [r.platform_id, r]) || []
+    existingRecords?.map((r) => [r.platform_id, r]) || [],
   );
 
   // 2. 랭킹 병합
@@ -287,61 +372,92 @@ export function shouldFetchBadge(existingRawData, currentRank) {
 }
 
 /**
- * Trendshift에서 레포 검색 후 뱃지 정보 반환
- * @param {string} repoName - GitHub 레포 이름 (owner/repo)
- * @returns {Promise<{badgeUrl: string, badgeRank: number, trendshiftUrl: string}|null>}
+ * Trendshift에서 레포 검색 후 뱃지 정보 반환 (SVG를 Storage에 업로드, R2 우선)
  */
 export async function fetchTrendshiftBadge(repoName) {
   try {
-    // 1. Trendshift 검색 페이지에서 레포 찾기
     const searchUrl = `${TRENDSHIFT_BASE_URL}?q=${encodeURIComponent(repoName)}`;
     const searchRes = await fetch(searchUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         Accept: "text/html",
       },
     });
 
     if (!searchRes.ok) {
-      logCrawl("trendshift", `Search failed for ${repoName}: ${searchRes.status}`);
+      logCrawl(
+        "trendshift",
+        `Search failed for ${repoName}: ${searchRes.status}`,
+      );
       return null;
     }
 
     const html = await searchRes.text();
+    const repoNameLower = repoName.toLowerCase();
 
-    // 2. 레포 ID 추출 (GitHub 링크에서 매칭되는 레포 카드 찾기)
-    const repoIdMatch = html.match(
-      new RegExp(`href="/repositories/(\\d+)"[^>]*>[\\s\\S]*?${repoName.replace("/", "/")}`, "i")
-    );
+    // Extract all pairs of (repo_id, github_url) and find exact match
+    const pairPattern =
+      /href="\/repositories\/(\d+)"[^>]*>[\s\S]*?github\.com\/([^"<\s]+)/gi;
+    let match;
+    let repoId = null;
 
-    if (!repoIdMatch) {
-      // 직접 URL 시도 (레포명으로 검색 실패시)
+    while ((match = pairPattern.exec(html)) !== null) {
+      const foundId = match[1];
+      const foundGithubUrl = match[2].toLowerCase().replace(/["']/g, "");
+
+      if (foundGithubUrl === repoNameLower) {
+        repoId = foundId;
+        break;
+      }
+    }
+
+    if (!repoId) {
       logCrawl("trendshift", `Repo not found in search: ${repoName}`);
       return null;
     }
-
-    const repoId = repoIdMatch[1];
-    const badgeUrl = `${TRENDSHIFT_BASE_URL}/api/badge/repositories/${repoId}`;
+    const originalBadgeUrl = `${TRENDSHIFT_BASE_URL}/api/badge/repositories/${repoId}`;
     const trendshiftUrl = `${TRENDSHIFT_BASE_URL}/repositories/${repoId}`;
 
-    // 3. 뱃지 SVG 가져와서 등수 파싱
-    const badgeRes = await fetch(badgeUrl, {
+    const badgeRes = await fetch(originalBadgeUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
     });
 
     if (!badgeRes.ok) {
-      logCrawl("trendshift", `Badge fetch failed for ${repoName}: ${badgeRes.status}`);
-      return { badgeUrl, badgeRank: null, trendshiftUrl };
+      logCrawl(
+        "trendshift",
+        `Badge fetch failed for ${repoName}: ${badgeRes.status}`,
+      );
+      return null;
     }
 
     const svgContent = await badgeRes.text();
     const badgeRank = parseBadgeRank(svgContent);
 
-    logCrawl("trendshift", `Badge found for ${repoName}: rank #${badgeRank}`);
+    if (!badgeRank) {
+      logCrawl("trendshift", `No badge rank for ${repoName}`);
+      return null;
+    }
+
+    const storagePath = `github/badges/${repoName.replace("/", "-")}_trendshift.svg`;
+    const uploadedUrl = await uploadToSupabaseStorage(
+      originalBadgeUrl,
+      storagePath,
+    );
+
+    const badgeUrl = uploadedUrl || originalBadgeUrl;
+
+    logCrawl(
+      "trendshift",
+      `Badge found for ${repoName}: rank #${badgeRank}, url=${uploadedUrl ? "supabase" : "original"}`,
+    );
 
     return { badgeUrl, badgeRank, trendshiftUrl };
   } catch (error) {
-    logCrawl("trendshift", `Error fetching badge for ${repoName}: ${error.message}`);
+    logCrawl(
+      "trendshift",
+      `Error fetching badge for ${repoName}: ${error.message}`,
+    );
     return null;
   }
 }
@@ -363,12 +479,17 @@ export async function markAnalysisFailed(id, errorMessage) {
     .from("crawled_content")
     .update({
       status: "analysis_failed",
-      raw_data: supabase.rpc ? undefined : { analysis_error: errorMessage, failed_at: new Date().toISOString() },
+      raw_data: supabase.rpc
+        ? undefined
+        : { analysis_error: errorMessage, failed_at: new Date().toISOString() },
     })
     .eq("id", id);
 
   if (error) {
-    logCrawl("analysis", `Failed to mark analysis_failed for ${id}: ${error.message}`);
+    logCrawl(
+      "analysis",
+      `Failed to mark analysis_failed for ${id}: ${error.message}`,
+    );
     return { success: false, error: error.message };
   }
 
@@ -394,7 +515,10 @@ export async function getFailedAnalysisRecords(platform, limit = 10) {
     .limit(limit);
 
   if (error) {
-    logCrawl("analysis", `Failed to fetch analysis_failed records: ${error.message}`);
+    logCrawl(
+      "analysis",
+      `Failed to fetch analysis_failed records: ${error.message}`,
+    );
     return [];
   }
 
@@ -421,5 +545,8 @@ export async function retryFailedAnalysis(ids) {
   }
 
   logCrawl("analysis", `Retrying ${data?.length || 0} records for analysis`);
-  return { success: data?.length || 0, failed: ids.length - (data?.length || 0) };
+  return {
+    success: data?.length || 0,
+    failed: ids.length - (data?.length || 0),
+  };
 }
