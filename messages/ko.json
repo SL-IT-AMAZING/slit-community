@@ -21,6 +21,7 @@
     "content": "콘텐츠",
     "categories": "카테고리",
     "opensource": "오픈소스",
+    "ratings": "등급표",
     "newsletter": "뉴스레터",
     "homer": "호머",
     "premium": "프리미엄",
@@ -309,6 +310,74 @@
       "monthly": "월간",
       "searchPlaceholder": "레포지토리 검색...",
       "clear": "초기화"
+    }
+  },
+  "ratings": {
+    "title": "등급표",
+    "heroTitle": "AI 툴 등급표",
+    "heroSubtitle": "바이브코딩과 AI 개발에 유용한 툴들을 평가하고 발견하세요",
+    "noResults": "표시할 툴이 없습니다",
+    "loading": "툴 로딩 중...",
+    "filters": {
+      "allTags": "전체 태그",
+      "searchPlaceholder": "툴 검색...",
+      "sortBy": "정렬",
+      "sortByRating": "평점순",
+      "sortByClicks": "인기순",
+      "sortByRecent": "최신순",
+      "sortByName": "이름순",
+      "clear": "초기화"
+    },
+    "tags": {
+      "ui": "UI",
+      "vibe-coding": "바이브코딩",
+      "automation": "자동화",
+      "etc": "기타",
+      "opensource": "오픈소스",
+      "methodology": "개발방법론",
+      "claude": "클로드",
+      "content-creation": "컨텐츠 생성"
+    },
+    "pricing": {
+      "free": "무료",
+      "paid": "유료",
+      "freemium": "프리미엄"
+    },
+    "detail": {
+      "pros": "장점",
+      "cons": "단점",
+      "visit": "방문하기",
+      "rating": "평점",
+      "clicks": "클릭수",
+      "clickTrend": "최근 30일 클릭 추이"
+    },
+    "charts": {
+      "ratingDistribution": "평점 분포",
+      "tagDistribution": "태그별 분포",
+      "leaderboard": "인기 TOP 10"
+    },
+    "admin": {
+      "title": "툴 관리",
+      "newTool": "새 툴 추가",
+      "editTool": "툴 수정",
+      "deleteTool": "툴 삭제",
+      "deleteConfirm": "정말 이 툴을 삭제하시겠습니까?",
+      "form": {
+        "name": "이름",
+        "slug": "슬러그",
+        "description": "설명 (한국어)",
+        "descriptionEn": "설명 (영어)",
+        "link": "링크",
+        "thumbnailUrl": "썸네일 URL",
+        "adminRating": "관리자 평점",
+        "tags": "태그",
+        "pricing": "가격 정책",
+        "isFeatured": "추천 여부",
+        "pros": "장점",
+        "cons": "단점",
+        "addPro": "장점 추가",
+        "addCon": "단점 추가"
+      }
     }
   },
   "newsletter": {

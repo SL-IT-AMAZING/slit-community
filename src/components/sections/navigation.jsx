@@ -29,11 +29,11 @@ const NavigationBar = () => {
   const isAdmin = isAuthenticated && session?.user?.role === "admin";
 
   const navLinks = [
-    { name: t("home"), path: "/" },
-    { name: t("content"), path: "/content" },
-    { name: t("opensource"), path: "/opensource" },
+    { name: t("home"), path: "/", comingSoon: true },
+    { name: t("content"), path: "/content", comingSoon: true },
+    { name: t("opensource"), path: "/opensource", comingSoon: true },
+    { name: t("ratings"), path: "/ratings" },
     { name: t("newsletter"), path: "/newsletter" },
-    { name: t("homer"), path: "/homer" },
     { name: t("premium"), path: "/premium", comingSoon: true },
   ];
 

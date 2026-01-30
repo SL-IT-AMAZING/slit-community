@@ -139,6 +139,43 @@ CREATE TABLE IF NOT EXISTS crawled_content (
   UNIQUE(platform, platform_id)
 );
 
+-- ===== TOOLS TABLE =====
+CREATE TABLE IF NOT EXISTS tools (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  description_en TEXT,
+  link TEXT NOT NULL,
+  thumbnail_url TEXT,
+  admin_rating INTEGER CHECK (admin_rating >= 1 AND admin_rating <= 5),
+  tags TEXT[] DEFAULT '{}',
+  pricing TEXT CHECK (pricing IN ('free', 'paid', 'freemium')) DEFAULT 'free',
+  is_featured BOOLEAN DEFAULT FALSE,
+  pros TEXT[] DEFAULT '{}',
+  cons TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== TOOL CLICKS TABLE =====
+CREATE TABLE IF NOT EXISTS tool_clicks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tool_id UUID REFERENCES tools(id) ON DELETE CASCADE,
+  clicked_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ===== TOOL USER RATINGS TABLE =====
+CREATE TABLE IF NOT EXISTS tool_user_ratings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tool_id UUID REFERENCES tools(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tool_id, user_id)
+);
+
 -- ===== INDEXES =====
 CREATE INDEX IF NOT EXISTS idx_content_slug ON content(slug);
 CREATE INDEX IF NOT EXISTS idx_content_type ON content(type);
@@ -160,6 +197,15 @@ CREATE INDEX IF NOT EXISTS idx_crawled_status ON crawled_content(status);
 CREATE INDEX IF NOT EXISTS idx_crawled_at ON crawled_content(crawled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_crawled_content_queued ON crawled_content(status) WHERE status = 'queued';
 CREATE INDEX IF NOT EXISTS idx_crawled_content_translated ON crawled_content(status) WHERE status = 'translated';
+-- Tools indexes
+CREATE INDEX IF NOT EXISTS idx_tools_slug ON tools(slug);
+CREATE INDEX IF NOT EXISTS idx_tools_admin_rating ON tools(admin_rating);
+CREATE INDEX IF NOT EXISTS idx_tools_pricing ON tools(pricing);
+CREATE INDEX IF NOT EXISTS idx_tools_is_featured ON tools(is_featured);
+CREATE INDEX IF NOT EXISTS idx_tools_tags ON tools USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_tool_clicks_tool_id ON tool_clicks(tool_id);
+CREATE INDEX IF NOT EXISTS idx_tool_clicks_clicked_at ON tool_clicks(clicked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tool_user_ratings_tool_id ON tool_user_ratings(tool_id);
 
 -- ===== ROW LEVEL SECURITY (RLS) =====
 
@@ -172,6 +218,9 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE metrics_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crawled_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tools ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tool_clicks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tool_user_ratings ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 CREATE POLICY "Users can view own profile" ON users
@@ -237,6 +286,22 @@ CREATE POLICY "Admins can manage crawled content" ON crawled_content
 CREATE POLICY "Service role can manage crawled content" ON crawled_content
   FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
+-- Tools policies
+CREATE POLICY "Anyone can view tools" ON tools FOR SELECT USING (true);
+CREATE POLICY "Admins can manage tools" ON tools FOR ALL USING (
+  EXISTS (SELECT 1 FROM users WHERE id::text = auth.uid()::text AND role = 'admin')
+);
+
+-- Tool clicks policies
+CREATE POLICY "Anyone can record clicks" ON tool_clicks FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can view clicks" ON tool_clicks FOR SELECT USING (true);
+
+-- Tool user ratings policies
+CREATE POLICY "Users can rate tools" ON tool_user_ratings FOR ALL USING (
+  user_id::text = auth.uid()::text
+);
+CREATE POLICY "Anyone can view ratings" ON tool_user_ratings FOR SELECT USING (true);
+
 -- ===== FUNCTIONS =====
 
 -- Function to increment view count
@@ -285,6 +350,10 @@ CREATE TRIGGER update_content_updated_at
 
 CREATE TRIGGER update_subscriptions_updated_at
   BEFORE UPDATE ON subscriptions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_tools_updated_at
+  BEFORE UPDATE ON tools
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ===== AUTH TRIGGER: 회원가입 시 자동 users 테이블 생성 =====

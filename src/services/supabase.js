@@ -532,32 +532,37 @@ const PLATFORM_TYPE_MAP = {
   reddit: "reddit",
 };
 
-// 플랫폼별 최신 콘텐츠 조회
+// 플랫폼별 최신 콘텐츠 조회 (페이지네이션 지원)
 export const fetchLatestByPlatform = async ({
   platform,
   limitCount = 20,
+  offset = 0,
 } = {}) => {
   const supabase = await createClient();
 
   let query = supabase
     .from("content")
-    .select("*, social_metadata, author_info")
+    .select("*, social_metadata, author_info", { count: "exact" })
     .eq("status", "published")
     .order("published_at", { ascending: false })
-    .limit(limitCount);
+    .range(offset, offset + limitCount - 1);
 
   if (platform && PLATFORM_TYPE_MAP[platform]) {
     query = query.eq("type", PLATFORM_TYPE_MAP[platform]);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     console.error("Error fetching platform content:", error);
     throw error;
   }
 
-  return data || [];
+  return {
+    data: data || [],
+    total: count || 0,
+    hasMore: offset + limitCount < count,
+  };
 };
 
 export const fetchRecommendedContent = async (limitCount = 6) => {
@@ -1045,4 +1050,302 @@ export const getNewsletterSubscriberCount = async () => {
   }
 
   return count || 0;
+};
+
+// ===== Tools Functions =====
+
+// Fetch tools with optional filters
+export const fetchTools = async ({
+  tag,
+  sortBy = "rating",
+  search,
+  limit = 100,
+} = {}) => {
+  const supabase = await createClient();
+
+  let query = supabase.from("tools").select("*").limit(limit);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching tools:", error);
+    throw error;
+  }
+
+  let result = data || [];
+
+  // Client-side filtering for tags (array contains)
+  if (tag) {
+    result = result.filter((item) => item.tags?.includes(tag));
+  }
+
+  // Client-side search
+  if (search) {
+    const searchLower = search.toLowerCase();
+    result = result.filter(
+      (item) =>
+        item.name?.toLowerCase().includes(searchLower) ||
+        item.description?.toLowerCase().includes(searchLower),
+    );
+  }
+
+  // Client-side sorting
+  result.sort((a, b) => {
+    if (sortBy === "rating") {
+      return (b.admin_rating || 0) - (a.admin_rating || 0);
+    } else if (sortBy === "name") {
+      return (a.name || "").localeCompare(b.name || "");
+    } else if (sortBy === "recent") {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+    return 0;
+  });
+
+  return result;
+};
+
+// Fetch single tool by slug
+export const fetchToolBySlug = async (slug) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tools")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    console.error("Error fetching tool by slug:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Fetch tool by ID (for admin edit)
+export const fetchToolById = async (id) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tools")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching tool by id:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Record a tool click
+export const recordToolClick = async (toolId, userId = null) => {
+  const supabase = await createClient();
+
+  const insertData = { tool_id: toolId };
+  if (userId) {
+    insertData.user_id = userId;
+  }
+
+  const { error } = await supabase.from("tool_clicks").insert(insertData);
+
+  if (error) {
+    console.error("Error recording tool click:", error);
+    // Don't throw - clicking shouldn't break the app
+  }
+};
+
+// Fetch click history for sparkline (last N days)
+export const fetchToolClickHistory = async (toolId, days = 30) => {
+  const supabase = await createClient();
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data, error } = await supabase
+    .from("tool_clicks")
+    .select("clicked_at")
+    .eq("tool_id", toolId)
+    .gte("clicked_at", startDate.toISOString())
+    .order("clicked_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching tool click history:", error);
+    return [];
+  }
+
+  // Group by date for sparkline
+  const clicksByDate = {};
+  (data || []).forEach((click) => {
+    const date = click.clicked_at.split("T")[0];
+    clicksByDate[date] = (clicksByDate[date] || 0) + 1;
+  });
+
+  // Fill in missing dates with 0
+  const result = [];
+  for (let i = days; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split("T")[0];
+    result.push({ date: dateStr, clicks: clicksByDate[dateStr] || 0 });
+  }
+
+  return result;
+};
+
+// Fetch aggregated stats for charts
+export const fetchToolStats = async () => {
+  const supabase = await createClient();
+
+  // Get all tools for stats
+  const { data: tools, error: toolsError } = await supabase
+    .from("tools")
+    .select("id, admin_rating, tags");
+
+  if (toolsError) {
+    console.error("Error fetching tool stats:", toolsError);
+    throw toolsError;
+  }
+
+  // Get clicks from last 30 days for leaderboard
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: clicks, error: clicksError } = await supabase
+    .from("tool_clicks")
+    .select("tool_id")
+    .gte("clicked_at", thirtyDaysAgo.toISOString());
+
+  if (clicksError) {
+    console.error("Error fetching click stats:", clicksError);
+  }
+
+  // Calculate rating distribution
+  const ratingDistribution = [1, 2, 3, 4, 5].map((rating) => ({
+    rating,
+    count: (tools || []).filter((t) => t.admin_rating === rating).length,
+  }));
+
+  // Calculate tag distribution
+  const tagCounts = {};
+  (tools || []).forEach((tool) => {
+    (tool.tags || []).forEach((tag) => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    });
+  });
+  const tagDistribution = Object.entries(tagCounts).map(([tag, count]) => ({
+    tag,
+    count,
+  }));
+
+  // Calculate click leaderboard
+  const clickCounts = {};
+  (clicks || []).forEach((click) => {
+    clickCounts[click.tool_id] = (clickCounts[click.tool_id] || 0) + 1;
+  });
+
+  return {
+    ratingDistribution,
+    tagDistribution,
+    clickCounts, // Map of tool_id -> click count (last 30 days)
+    totalTools: (tools || []).length,
+  };
+};
+
+// Admin: Create a new tool
+export const createTool = async (toolData) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tools")
+    .insert({
+      name: toolData.name,
+      slug: toolData.slug,
+      description: toolData.description,
+      description_en: toolData.descriptionEn,
+      link: toolData.link,
+      thumbnail_url: toolData.thumbnailUrl,
+      admin_rating: toolData.adminRating,
+      tags: toolData.tags || [],
+      pricing: toolData.pricing || "free",
+      is_featured: toolData.isFeatured || false,
+      pros: toolData.pros || [],
+      cons: toolData.cons || [],
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating tool:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Admin: Update a tool
+export const updateTool = async (toolId, toolData) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tools")
+    .update({
+      name: toolData.name,
+      slug: toolData.slug,
+      description: toolData.description,
+      description_en: toolData.descriptionEn,
+      link: toolData.link,
+      thumbnail_url: toolData.thumbnailUrl,
+      admin_rating: toolData.adminRating,
+      tags: toolData.tags || [],
+      pricing: toolData.pricing,
+      is_featured: toolData.isFeatured,
+      pros: toolData.pros || [],
+      cons: toolData.cons || [],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", toolId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating tool:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Admin: Delete a tool
+export const deleteTool = async (toolId) => {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("tools").delete().eq("id", toolId);
+
+  if (error) {
+    console.error("Error deleting tool:", error);
+    throw error;
+  }
+};
+
+// Admin: Fetch all tools (no filters, for admin list)
+export const fetchAllTools = async () => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tools")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching all tools:", error);
+    throw error;
+  }
+
+  return data || [];
 };
