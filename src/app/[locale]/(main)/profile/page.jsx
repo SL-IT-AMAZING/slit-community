@@ -28,7 +28,9 @@ export default function ProfilePage() {
     return (
       <div className="container flex min-h-[50vh] flex-col items-center justify-center py-8">
         <p className="mb-4 text-muted-foreground">
-          {locale === "ko" ? "로그인이 필요합니다." : "Please log in to view your profile."}
+          {locale === "ko"
+            ? "로그인이 필요합니다."
+            : "Please log in to view your profile."}
         </p>
         <Link href="/login">
           <Button>{locale === "ko" ? "로그인" : "Login"}</Button>
@@ -91,13 +93,13 @@ export default function ProfilePage() {
                   <FaBookmark size={14} />
                   {t("bookmarks.title")}
                 </Link>
-                <Link
-                  href="/premium"
-                  className="flex items-center gap-2 rounded-md p-2 text-sm hover:bg-accent"
+                <button
+                  onClick={() => alert("준비중입니다")}
+                  className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-accent"
                 >
                   <FaCrown size={14} />
                   {locale === "ko" ? "프리미엄 구독" : "Premium Subscription"}
-                </Link>
+                </button>
               </nav>
             </CardContent>
           </Card>
@@ -131,29 +133,6 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* Language */}
-              <div className="space-y-2">
-                <Label>{t("language")}</Label>
-                <div className="flex gap-2">
-                  <Link href="/ko/profile">
-                    <Button
-                      variant={locale === "ko" ? "default" : "outline"}
-                      size="sm"
-                    >
-                      한국어
-                    </Button>
-                  </Link>
-                  <Link href="/en/profile">
-                    <Button
-                      variant={locale === "en" ? "default" : "outline"}
-                      size="sm"
-                    >
-                      English
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
               {/* Subscription Status */}
               <div className="space-y-2">
                 <Label>{t("subscription")}</Label>
@@ -170,11 +149,13 @@ export default function ProfilePage() {
                             : "You have access to all premium content."}
                         </p>
                       </div>
-                      <Link href="/premium">
-                        <Button variant="outline" size="sm">
-                          {locale === "ko" ? "관리" : "Manage"}
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => alert("준비중입니다")}
+                      >
+                        {locale === "ko" ? "관리" : "Manage"}
+                      </Button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
@@ -188,11 +169,9 @@ export default function ProfilePage() {
                             : "Upgrade to premium to enjoy all content."}
                         </p>
                       </div>
-                      <Link href="/premium">
-                        <Button size="sm">
-                          {locale === "ko" ? "업그레이드" : "Upgrade"}
-                        </Button>
-                      </Link>
+                      <Button size="sm" onClick={() => alert("준비중입니다")}>
+                        {locale === "ko" ? "업그레이드" : "Upgrade"}
+                      </Button>
                     </div>
                   )}
                 </div>
