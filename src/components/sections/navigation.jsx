@@ -98,7 +98,7 @@ const NavigationBar = () => {
               href={navLink.path}
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 navLink.comingSoon
-                  ? "text-muted-foreground line-through decoration-muted-foreground/50"
+                  ? "text-muted-foreground line-through decoration-2"
                   : ""
               }`}
               onClick={(e) => handleNavClick(e, navLink)}
@@ -208,7 +208,7 @@ const NavigationBar = () => {
                     href={navLink.path}
                     className={`block min-h-[44px] py-2 text-base font-medium sm:text-lg ${
                       navLink.comingSoon
-                        ? "text-muted-foreground line-through decoration-muted-foreground/50"
+                        ? "text-muted-foreground line-through decoration-2"
                         : ""
                     }`}
                     onClick={(e) => {
