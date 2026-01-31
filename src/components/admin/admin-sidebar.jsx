@@ -18,6 +18,7 @@ import {
   FaRss,
   FaXmark,
   FaEnvelope,
+  FaStar,
 } from "react-icons/fa6";
 
 const navItems = [
@@ -56,6 +57,12 @@ const navItems = [
     nameKo: "분석",
     href: "/admin/analytics",
     icon: FaChartLine,
+  },
+  {
+    name: "Tools",
+    nameKo: "등급표",
+    href: "/admin/tools",
+    icon: FaStar,
   },
   {
     name: "Settings",

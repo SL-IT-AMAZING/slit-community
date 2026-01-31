@@ -10,7 +10,7 @@ config({ path: resolve(__dirname, "..", ".env.local") });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
 // 플랫폼 → content.type 매핑
@@ -72,7 +72,10 @@ async function publishContent(ids) {
         type: PLATFORM_TO_TYPE[item.platform] || "article",
         category: item.digest_result?.categories?.[0] || "ai-tools",
         tags: item.digest_result?.categories || [],
-        thumbnail_url: item.thumbnail_url,
+        thumbnail_url:
+          item.thumbnail_url ||
+          item.screenshot_url ||
+          item.raw_data?.screenshotUrls?.[0],
         external_url: item.url,
         social_metadata: {
           ...item.raw_data,
@@ -96,7 +99,10 @@ async function publishContent(ids) {
         .insert(contentData);
 
       if (insertError) {
-        console.error(`Failed to publish item ${item.id}:`, insertError.message);
+        console.error(
+          `Failed to publish item ${item.id}:`,
+          insertError.message,
+        );
         continue;
       }
 

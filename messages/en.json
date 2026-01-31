@@ -21,6 +21,7 @@
     "content": "Content",
     "categories": "Categories",
     "opensource": "Open Source",
+    "ratings": "Ratings",
     "newsletter": "Newsletter",
     "homer": "Homer",
     "premium": "Premium",
@@ -309,6 +310,74 @@
       "monthly": "Monthly",
       "searchPlaceholder": "Search repositories...",
       "clear": "Clear"
+    }
+  },
+  "ratings": {
+    "title": "Tool Ratings",
+    "heroTitle": "AI Tool Ratings",
+    "heroSubtitle": "Discover and rate useful tools for vibe coding and AI development",
+    "noResults": "No tools to display",
+    "loading": "Loading tools...",
+    "filters": {
+      "allTags": "All Tags",
+      "searchPlaceholder": "Search tools...",
+      "sortBy": "Sort by",
+      "sortByRating": "Rating",
+      "sortByClicks": "Popular",
+      "sortByRecent": "Recent",
+      "sortByName": "Name",
+      "clear": "Clear"
+    },
+    "tags": {
+      "ui": "UI",
+      "vibe-coding": "Vibe Coding",
+      "automation": "Automation",
+      "etc": "Others",
+      "opensource": "Open Source",
+      "methodology": "Methodology",
+      "claude": "Claude",
+      "content-creation": "Content Creation"
+    },
+    "pricing": {
+      "free": "Free",
+      "paid": "Paid",
+      "freemium": "Freemium"
+    },
+    "detail": {
+      "pros": "Pros",
+      "cons": "Cons",
+      "visit": "Visit",
+      "rating": "Rating",
+      "clicks": "Clicks",
+      "clickTrend": "Click trend (30 days)"
+    },
+    "charts": {
+      "ratingDistribution": "Rating Distribution",
+      "tagDistribution": "Tag Distribution",
+      "leaderboard": "Top 10 Popular"
+    },
+    "admin": {
+      "title": "Tool Management",
+      "newTool": "Add New Tool",
+      "editTool": "Edit Tool",
+      "deleteTool": "Delete Tool",
+      "deleteConfirm": "Are you sure you want to delete this tool?",
+      "form": {
+        "name": "Name",
+        "slug": "Slug",
+        "description": "Description (Korean)",
+        "descriptionEn": "Description (English)",
+        "link": "Link",
+        "thumbnailUrl": "Thumbnail URL",
+        "adminRating": "Admin Rating",
+        "tags": "Tags",
+        "pricing": "Pricing",
+        "isFeatured": "Featured",
+        "pros": "Pros",
+        "cons": "Cons",
+        "addPro": "Add Pro",
+        "addCon": "Add Con"
+      }
     }
   },
   "newsletter": {
