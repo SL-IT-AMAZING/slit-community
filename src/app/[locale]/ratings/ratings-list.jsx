@@ -147,7 +147,7 @@ export default function RatingsList({ initialTools, toolStats, locale }) {
             />
             <div className="text-center sm:text-left">
               <h1 className="mb-2 text-3xl font-black tracking-tight sm:text-4xl">
-                호머식 AI툴 등급표
+                {t("heroTitle")}
               </h1>
               <p className="text-base text-muted-foreground sm:text-lg">
                 {t("heroSubtitle")}
