@@ -96,7 +96,11 @@ const NavigationBar = () => {
             <Link
               key={index}
               href={navLink.path}
-              className="text-sm font-medium transition-colors hover:text-primary"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                navLink.comingSoon
+                  ? "text-muted-foreground line-through decoration-muted-foreground/50"
+                  : ""
+              }`}
               onClick={(e) => handleNavClick(e, navLink)}
             >
               {navLink.name}
@@ -202,7 +206,11 @@ const NavigationBar = () => {
                 <li key={index}>
                   <Link
                     href={navLink.path}
-                    className="block min-h-[44px] py-2 text-base font-medium sm:text-lg"
+                    className={`block min-h-[44px] py-2 text-base font-medium sm:text-lg ${
+                      navLink.comingSoon
+                        ? "text-muted-foreground line-through decoration-muted-foreground/50"
+                        : ""
+                    }`}
                     onClick={(e) => {
                       if (navLink.comingSoon) {
                         e.preventDefault();
