@@ -1,4 +1,9 @@
-import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
+import {
+  crawlWithScreenshot,
+  loadCookies,
+  loadCookiesFromEnv,
+  fetchPostDetails,
+} from "./screenshot-crawler.js";
 import { upsertCrawledContent, logCrawl, getScreenshotDir } from "./index.js";
 
 const FEED_URL = "https://x.com/home"; // Following 탭
@@ -26,7 +31,12 @@ export async function crawlX({ limit = 20 } = {}) {
   logCrawl("x", `Screenshots will be saved to: ${screenshotInfo.dir}`);
 
   try {
-    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot("x", FEED_URL, cookies, screenshotInfo);
+    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot(
+      "x",
+      FEED_URL,
+      cookies,
+      screenshotInfo,
+    );
 
     logCrawl("x", `Feed screenshot captured, found ${links.length} links`);
 
@@ -35,7 +45,7 @@ export async function crawlX({ limit = 20 } = {}) {
       (link) =>
         link.href.includes("/status/") &&
         !link.href.includes("/photo/") &&
-        !link.href.includes("/video/")
+        !link.href.includes("/video/"),
     );
 
     // 고유한 트윗 ID 추출
@@ -65,14 +75,24 @@ export async function crawlX({ limit = 20 } = {}) {
 
     for (const [tweetId, link] of tweetEntries) {
       // URL에서 사용자명 추출
-      const userMatch = link.href.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status/);
+      const userMatch = link.href.match(
+        /(?:x\.com|twitter\.com)\/([^/]+)\/status/,
+      );
       const username = userMatch ? userMatch[1] : null;
 
       // 스크린샷 + 미디어 다운로드
       let postDetails = { screenshotUrl: null, downloadedMedia: [] };
       try {
-        postDetails = await fetchPostDetails("x", link.href, cookies, screenshotInfo);
-        logCrawl("x", `Captured: ${tweetId} (${postDetails.downloadedMedia?.length || 0} media)`);
+        postDetails = await fetchPostDetails(
+          "x",
+          link.href,
+          cookies,
+          screenshotInfo,
+        );
+        logCrawl(
+          "x",
+          `Captured: ${tweetId} (${postDetails.downloadedMedia?.length || 0} media)`,
+        );
       } catch (err) {
         logCrawl("x", `Failed for ${tweetId}: ${err.message}`);
       }
@@ -83,11 +103,10 @@ export async function crawlX({ limit = 20 } = {}) {
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://x.com/${username}` : null,
-        screenshot_url: postDetails.screenshotUrl,
+        screenshot_url: null, // 스크린샷 미사용 - R2 저장 안함
         status: "pending_analysis",
         raw_data: {
-          feedScreenshot,
-          screenshotUrls: postDetails.screenshotUrls || [],
+          // feedScreenshot, screenshotUrls 제거 - R2에 불필요한 스크린샷 저장 방지
           downloadedMedia: postDetails.downloadedMedia || [],
           mediaUrls: postDetails.mediaUrls || [],
           externalLinks: postDetails.externalLinks || [],

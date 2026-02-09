@@ -75,7 +75,6 @@ export default function XCard({
         platformIcon={FaXTwitter}
         externalUrl={externalUrl}
         className={className}
-        onClick={hasVideoContent ? undefined : () => setModalOpen(true)}
       >
         {/* Author */}
         <AuthorInfo

@@ -4,6 +4,7 @@ import { dirname, resolve, extname, join } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, existsSync } from "fs";
 import { uploadToR2, isR2Configured } from "../src/lib/storage/r2.js";
+import { translateToKorean } from "../src/lib/crawlers/translate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
@@ -76,12 +77,31 @@ function formatYoutubeBody(digestResult) {
   return parts.join("") || null;
 }
 
-function formatGithubBody(item) {
+async function formatGithubBody(item, translatedDescription = null) {
   const parts = [];
   const raw = item.raw_data || {};
+  const llmSummary = raw.llm_summary;
 
-  if (item.description) {
-    parts.push(`${item.description}\n`);
+  if (llmSummary?.summary) {
+    parts.push(`${llmSummary.summary}\n`);
+
+    if (llmSummary.features?.length > 0) {
+      parts.push(`\n## 주요 기능\n`);
+      llmSummary.features.forEach((f) => parts.push(`- ${f}\n`));
+    }
+
+    if (llmSummary.targetAudience) {
+      parts.push(`\n**대상 사용자**: ${llmSummary.targetAudience}\n`);
+    }
+
+    if (llmSummary.beginner_description) {
+      parts.push(`\n💡 ${llmSummary.beginner_description}\n`);
+    }
+  } else {
+    const displayDescription = translatedDescription || item.description;
+    if (displayDescription) {
+      parts.push(`${displayDescription}\n`);
+    }
   }
 
   parts.push(`\n## 저장소 정보\n`);
@@ -90,10 +110,6 @@ function formatGithubBody(item) {
   if (raw.forks) parts.push(`- **포크**: ${raw.forks.toLocaleString()}\n`);
   if (raw.periodStars)
     parts.push(`- **최근 스타**: +${raw.periodStars.toLocaleString()}\n`);
-
-  if (item.content_text) {
-    parts.push(`\n## README\n\n${item.content_text}\n`);
-  }
 
   return parts.join("") || null;
 }
@@ -157,9 +173,6 @@ async function processMediaUrls(rawData) {
 
   const singleFields = [
     "star_history_screenshot",
-    "screenshotUrl",
-    "feedScreenshot",
-    // X/Threads 비디오 필드 추가
     "downloadedVideoUrl",
     "twitterVideoUrl",
     "threadsVideoUrl",
@@ -170,7 +183,7 @@ async function processMediaUrls(rawData) {
     }
   }
 
-  const arrayFields = ["screenshotUrls", "downloadedMedia"];
+  const arrayFields = ["downloadedMedia"];
   for (const field of arrayFields) {
     if (Array.isArray(processed[field])) {
       processed[field] = await Promise.all(
@@ -208,18 +221,45 @@ async function publishContent(ids) {
   console.log(`Found ${items.length} items to publish`);
   let published = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const item of items) {
     try {
-      const koreanTitle = item.translated_title || item.title || "(제목 없음)";
-      const englishTitle = item.translated_title ? item.title : null;
+      // 중복 체크: 이미 같은 platform_id로 게시된 콘텐츠가 있는지 확인
+      const { data: existing } = await supabase
+        .from("content")
+        .select("id")
+        .eq("platform_id", item.platform_id)
+        .eq("source_platform", item.platform)
+        .limit(1);
 
-      const rawThumbnail =
-        item.platform === "github"
-          ? item.screenshot_url
-          : item.thumbnail_url ||
-            item.screenshot_url ||
-            item.raw_data?.screenshotUrls?.[0];
+      if (existing && existing.length > 0) {
+        // 이미 게시된 콘텐츠 - crawled_content에서 삭제하고 skip
+        await supabase.from("crawled_content").delete().eq("id", item.id);
+        skipped++;
+        continue;
+      }
+
+      let koreanTitle = item.translated_title || item.title || "(제목 없음)";
+      let englishTitle = item.translated_title ? item.title : null;
+
+      if (item.platform === "github") {
+        koreanTitle = item.title;
+        englishTitle = null;
+      }
+
+      let rawThumbnail;
+      if (item.platform === "github") {
+        rawThumbnail = item.screenshot_url;
+      } else if (item.platform === "reddit") {
+        rawThumbnail =
+          item.raw_data?.highQualityImage || item.thumbnail_url || null;
+      } else {
+        rawThumbnail =
+          item.thumbnail_url ||
+          item.screenshot_url ||
+          item.raw_data?.screenshotUrls?.[0];
+      }
       const thumbnailUrl = await uploadToStorage(rawThumbnail);
       const processedRawData = await processMediaUrls(item.raw_data);
 
@@ -228,30 +268,52 @@ async function publishContent(ids) {
           ? formatYoutubeBody(item.digest_result)
           : null;
 
-      const githubBody =
-        item.platform === "github" ? formatGithubBody(item) : null;
+      let githubBody = null;
+      let githubDescriptionKo = null;
+      if (item.platform === "github") {
+        githubDescriptionKo = await translateToKorean(item.description);
+        githubBody = await formatGithubBody(item, githubDescriptionKo);
+      }
 
       const readmeScreenshotUrl =
         item.platform === "github" && item.screenshot_url ? thumbnailUrl : null;
 
       const isKoreanContent = ["threads", "x"].includes(item.platform);
-      const bodyContent = isKoreanContent
-        ? item.content_text || item.translated_content
-        : item.translated_content || item.content_text;
-      const bodyContentEn = isKoreanContent
-        ? item.translated_content
-        : item.content_text;
+      const isReddit = item.platform === "reddit";
+
+      let bodyContent, bodyContentEn;
+
+      if (isReddit) {
+        bodyContentEn =
+          item.content_text || item.digest_result?.content_en || null;
+        bodyContent =
+          item.translated_content ||
+          item.digest_result?.content_ko ||
+          bodyContentEn;
+      } else if (isKoreanContent) {
+        bodyContent = item.content_text || item.translated_content;
+        bodyContentEn = item.translated_content;
+      } else {
+        bodyContent = item.translated_content || item.content_text;
+        bodyContentEn = item.content_text;
+      }
 
       const contentData = {
         slug: generateSlug(item.title, item.platform_id),
         title: koreanTitle,
         title_en: englishTitle,
-        description: isKoreanContent
-          ? item.content_text?.slice(0, 500) || item.description
-          : item.translated_content?.slice(0, 500) || item.description,
-        description_en: isKoreanContent
-          ? item.translated_content?.slice(0, 500)
-          : item.description,
+        description:
+          item.platform === "github"
+            ? githubDescriptionKo?.slice(0, 500) || item.description
+            : isKoreanContent
+              ? item.content_text?.slice(0, 500) || item.description
+              : item.translated_content?.slice(0, 500) || item.description,
+        description_en:
+          item.platform === "github"
+            ? item.description
+            : isKoreanContent
+              ? item.translated_content?.slice(0, 500)
+              : item.description,
         body: youtubeBody || githubBody || bodyContent,
         body_en: youtubeBody || githubBody || bodyContentEn,
         type: PLATFORM_TO_TYPE[item.platform] || "article",
@@ -277,6 +339,7 @@ async function publishContent(ids) {
         },
         status: "published",
         published_at: new Date().toISOString(),
+        source_platform: item.platform,
       };
 
       const { error: insertError } = await supabase
@@ -305,6 +368,7 @@ async function publishContent(ids) {
 
   console.log(`\n=== 게시 완료 ===`);
   console.log(`✅ 성공: ${published}`);
+  console.log(`⏭️ 중복 스킵: ${skipped}`);
   console.log(`❌ 실패: ${failed}`);
 }
 

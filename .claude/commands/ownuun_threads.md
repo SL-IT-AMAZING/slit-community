@@ -1,18 +1,68 @@
-# Ownuun Threads - Threads 콘텐츠 분석
+# Ownuun Threads - Threads 전체 파이프라인
 
-Threads 크롤링 데이터를 **에이전트가 직접** 분석하고 DB에 저장합니다.
-
-## 실행 방법
-
-이 슬래시커맨드가 호출되면 에이전트가 다음을 수행합니다:
-
-1. DB에서 `pending_analysis` 상태의 Threads 콘텐츠 조회
-2. 각 콘텐츠의 스크린샷을 `look_at` 도구로 Vision 분석
-3. 분석 결과를 DB에 업데이트
+Threads 콘텐츠를 **크롤링 → 분석 → 게시**하는 전체 파이프라인입니다.
 
 ---
 
-## Step 1: pending_analysis 콘텐츠 조회
+## 아키텍처
+
+```
+/ownuun_threads (독립 파이프라인)
+    │
+    ├─ Phase 1: 크롤링
+    │      └─ node scripts/crawl-threads.mjs → DB 저장 (pending_analysis)
+    │
+    ├─ Phase 2: 에이전트 직접 분석
+    │      └─ look_at으로 스크린샷 Vision 분석 → DB 업데이트 (pending)
+    │
+    └─ Phase 3: 게시
+           ├─ 7점 이상: 자동 게시
+           └─ 7점 미만: 사용자 선택
+```
+
+---
+
+## Phase 1: 크롤링
+
+### Step 1.1: 크롤러 실행
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/crawl-threads.mjs --limit=20
+```
+
+### Step 1.2: 크롤링 결과 확인
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const MINIMUM = 10;
+
+async function check() {
+  const { count } = await supabase
+    .from('crawled_content')
+    .select('*', { count: 'exact', head: true })
+    .eq('platform', 'threads')
+    .eq('status', 'pending_analysis');
+
+  const status = (count || 0) >= MINIMUM ? '✅' : '❌ (부족: ' + (MINIMUM - count) + '개 더 필요)';
+  console.log(status + ' Threads pending_analysis: ' + (count || 0) + '개');
+
+  if ((count || 0) < MINIMUM) {
+    console.log('\\n⚠️ 최소 ' + MINIMUM + '개 필요. 쿠키 만료 확인 또는 --limit 값 증가 필요');
+  }
+}
+check();
+"
+```
+
+---
+
+## Phase 2: 분석
+
+### Step 2.1: pending_analysis 콘텐츠 조회
 
 ```bash
 cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
@@ -42,9 +92,7 @@ getPending();
 "
 ```
 
----
-
-## Step 2: 스크린샷 Vision 분석
+### Step 2.2: 스크린샷 Vision 분석
 
 각 콘텐츠의 스크린샷을 `look_at` 도구로 분석합니다.
 
@@ -82,9 +130,7 @@ look_at 도구 호출:
 }
 ```
 
----
-
-## Step 3: DB 업데이트
+### Step 2.3: DB 업데이트
 
 각 분석 완료 후 즉시 DB 업데이트:
 
@@ -134,9 +180,7 @@ update();
 "
 ```
 
----
-
-## Step 4: 완료 보고
+### Step 2.4: 분석 완료 보고
 
 모든 분석 완료 후:
 
@@ -148,6 +192,63 @@ update();
 1. [@작성자 8점] 한 줄 요약
 2. [@작성자 7점] 한 줄 요약
 ...
+```
+
+---
+
+## Phase 3: 게시
+
+### Step 3.1: 게시 대상 조회
+
+```bash
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function getTargets() {
+  const { data } = await supabase
+    .from('crawled_content')
+    .select('id, title, url, digest_result')
+    .eq('platform', 'threads')
+    .in('status', ['pending', 'completed']);
+
+  const high = data?.filter(i => i.digest_result?.recommendScore >= 7) || [];
+  const low = data?.filter(i => i.digest_result?.recommendScore && i.digest_result?.recommendScore < 7) || [];
+
+  console.log('=== 자동 게시 (7점 이상) ===');
+  high.forEach((i, n) => console.log((n+1) + '. [' + i.digest_result?.recommendScore + '점] ' + (i.digest_result?.summary_oneline || i.title || '').substring(0, 50)));
+  console.log('총: ' + high.length + '개\\n');
+
+  console.log('=== 7점 미만 (선택) ===');
+  low.forEach((i, n) => {
+    console.log((n+1) + '. [' + i.digest_result?.recommendScore + '점] ' + (i.digest_result?.summary_oneline || i.title || '').substring(0, 50));
+    console.log('   ' + i.url);
+  });
+
+  console.log('\\n--- DATA ---');
+  console.log('HIGH=' + JSON.stringify(high.map(i => i.id)));
+  console.log('LOW=' + JSON.stringify(low.map(i => i.id)));
+}
+getTargets();
+"
+```
+
+### Step 3.2: 게시 조건
+
+- **7점 이상**: 자동 게시
+- **7점 미만**: 목록 표시 → 사용자 선택
+
+### Step 3.3: 게시 실행
+
+선택한 ID들을 `/tmp/publish_ids.json`에 저장 후:
+
+```bash
+# ID 목록 저장 (예시)
+echo '["uuid1", "uuid2", "uuid3"]' > /tmp/publish_ids.json
+
+# 게시 실행
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/publish-batch.js
 ```
 
 ---
@@ -181,3 +282,5 @@ update();
 ## 파일 경로
 
 - 스크린샷: `public/screenshots/threads/`
+- 크롤러: `scripts/crawl-threads.mjs`
+- 게시: `scripts/publish-batch.js`

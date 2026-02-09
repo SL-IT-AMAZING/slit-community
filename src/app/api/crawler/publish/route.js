@@ -207,8 +207,8 @@ export async function POST(request) {
             avatar: item.author_avatar,
           },
           status: "published",
-          // 원본 게시 시간이 있으면 사용, 없으면 현재 시간
           published_at: item.published_at || new Date().toISOString(),
+          source_platform: item.platform,
         };
 
         const { error: insertError } = await supabase

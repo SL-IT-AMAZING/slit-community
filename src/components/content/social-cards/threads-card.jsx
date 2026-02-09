@@ -88,7 +88,6 @@ export default function ThreadsCard({
         platformIcon={ThreadsIcon}
         externalUrl={externalUrl}
         className={className}
-        onClick={hasVideoContent ? undefined : () => setModalOpen(true)}
       >
         {/* Author */}
         <AuthorInfo

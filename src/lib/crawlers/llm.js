@@ -1,9 +1,7 @@
 /**
  * LLM 유틸리티
- * 본문 분석은 Claude 에이전트가 직접 처리
+ * GitHub 분석은 Claude Code가 직접 처리
  */
-
-import { logCrawl } from "./index.js";
 
 /**
  * 상대 시간 문자열을 ISO 시간으로 변환
@@ -16,52 +14,63 @@ export function parseRelativeTime(relativeTime) {
   const now = new Date();
   const str = relativeTime.toString().toLowerCase().trim();
 
-  // "just now" 처리
   if (str === "just now" || str === "now" || str === "방금") {
     return now.toISOString();
   }
 
-  // 숫자+단위 패턴 (예: 2h, 3d, 5m, 1w, 2mo)
-  const timeMatch = str.match(/^(\d+)\s*(s|sec|m|min|h|hr|d|w|mo|y)(?:s|ours?|inutes?|ays?|eeks?|onths?|ears?)?$/i);
+  const timeMatch = str.match(
+    /^(\d+)\s*(s|sec|m|min|h|hr|d|w|mo|y)(?:s|ours?|inutes?|ays?|eeks?|onths?|ears?)?$/i,
+  );
   if (timeMatch) {
     const value = parseInt(timeMatch[1]);
     const unit = timeMatch[2].toLowerCase();
 
     switch (unit) {
-      case 's':
-      case 'sec':
+      case "s":
+      case "sec":
         now.setSeconds(now.getSeconds() - value);
         break;
-      case 'm':
-      case 'min':
+      case "m":
+      case "min":
         now.setMinutes(now.getMinutes() - value);
         break;
-      case 'h':
-      case 'hr':
+      case "h":
+      case "hr":
         now.setHours(now.getHours() - value);
         break;
-      case 'd':
+      case "d":
         now.setDate(now.getDate() - value);
         break;
-      case 'w':
-        now.setDate(now.getDate() - (value * 7));
+      case "w":
+        now.setDate(now.getDate() - value * 7);
         break;
-      case 'mo':
+      case "mo":
         now.setMonth(now.getMonth() - value);
         break;
-      case 'y':
+      case "y":
         now.setFullYear(now.getFullYear() - value);
         break;
     }
     return now.toISOString();
   }
 
-  // 월 일 형식 (예: Jan 14, January 14)
   const monthNames = {
-    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
   };
-  const monthDayMatch = str.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})$/i);
+  const monthDayMatch = str.match(
+    /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})$/i,
+  );
   if (monthDayMatch) {
     const month = monthNames[monthDayMatch[1].toLowerCase().slice(0, 3)];
     const day = parseInt(monthDayMatch[2]);
@@ -70,13 +79,11 @@ export function parseRelativeTime(relativeTime) {
     now.setDate(day);
     now.setHours(12, 0, 0, 0);
 
-    // 미래 날짜면 작년으로
     if (now > new Date()) {
       now.setFullYear(now.getFullYear() - 1);
     }
     return now.toISOString();
   }
 
-  // 기본값: 현재 시간
   return new Date().toISOString();
 }

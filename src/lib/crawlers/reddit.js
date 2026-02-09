@@ -2,10 +2,8 @@ import {
   upsertCrawledContent,
   getExistingPlatformIds,
   logCrawl,
-  getScreenshotDir,
 } from "./index.js";
-import { chromium } from "playwright";
-import * as path from "path";
+import { extractContent } from "./content-extractor.js";
 
 const SUBREDDIT = "vibecoding";
 const FETCH_LIMIT = 20;
@@ -125,30 +123,53 @@ export async function crawlReddit({
       }
     }
 
-    const screenshotInfo = getScreenshotDir("reddit");
-
     const items = [];
     for (const post of newPosts) {
       const p = post.data;
       const postUrl = `https://reddit.com${p.permalink}`;
 
-      let screenshotUrl = null;
-      if (!isValidThumbnail(p.thumbnail)) {
-        screenshotUrl = await captureRedditScreenshot(
-          postUrl,
-          p.id,
-          screenshotInfo,
-        );
-      }
-
       const highQualityImage = getHighQualityImageUrl(p);
+
+      let contentText = p.selftext || null;
+      let linkedUrl = null;
+
+      if (!contentText || contentText.length < 50) {
+        const externalUrl = p.url_overridden_by_dest || p.url;
+        if (
+          externalUrl &&
+          !externalUrl.includes("reddit.com") &&
+          !externalUrl.includes("redd.it")
+        ) {
+          linkedUrl = externalUrl;
+          try {
+            logCrawl(
+              "reddit",
+              `Extracting content from linked URL: ${externalUrl}`,
+            );
+            const extracted = await extractContent(externalUrl);
+            if (extracted.content && extracted.content.length > 50) {
+              contentText = extracted.content;
+              logCrawl(
+                "reddit",
+                `Extracted ${contentText.length} chars from ${externalUrl}`,
+              );
+            }
+          } catch (err) {
+            logCrawl(
+              "reddit",
+              `Failed to extract from ${externalUrl}: ${err.message}`,
+            );
+          }
+        }
+      }
 
       items.push({
         platform: "reddit",
         platform_id: p.id,
         title: p.title,
-        description: p.selftext?.slice(0, 500) || null,
-        content_text: p.selftext || null,
+        description:
+          p.selftext?.slice(0, 500) || contentText?.slice(0, 500) || null,
+        content_text: contentText,
         url: postUrl,
         author_name: p.author,
         author_url: `https://reddit.com/u/${p.author}`,
@@ -156,7 +177,7 @@ export async function crawlReddit({
         thumbnail_url:
           highQualityImage ||
           (isValidThumbnail(p.thumbnail) ? p.thumbnail : null),
-        screenshot_url: screenshotUrl,
+        screenshot_url: null,
         published_at: new Date(p.created_utc * 1000).toISOString(),
         status: "pending_analysis",
         raw_data: {
@@ -167,6 +188,8 @@ export async function crawlReddit({
           is_video: p.is_video,
           post_hint: p.post_hint,
           highQualityImage,
+          linked_url: linkedUrl,
+          original_selftext: p.selftext || null,
         },
       });
     }
@@ -214,53 +237,4 @@ function getHighQualityImageUrl(post) {
     return post.url_overridden_by_dest;
   }
   return null;
-}
-
-/**
- * Reddit 포스트 스크린샷 캡처
- * @param {string} postUrl - Reddit 포스트 URL
- * @param {string} postId - 포스트 ID
- * @param {{dir: string, urlPrefix: string}} screenshotInfo - 스크린샷 저장 정보
- * @returns {Promise<string|null>} 스크린샷 URL 또는 null
- */
-async function captureRedditScreenshot(postUrl, postId, screenshotInfo) {
-  let browser = null;
-
-  try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      userAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    });
-
-    const page = await context.newPage();
-
-    const oldRedditUrl = postUrl.replace("reddit.com", "old.reddit.com");
-    await page.goto(oldRedditUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-    await page.waitForTimeout(2000);
-
-    const filename = `post_${postId}.png`;
-    const filepath = path.join(screenshotInfo.dir, filename);
-
-    await page.screenshot({
-      path: filepath,
-      clip: { x: 0, y: 0, width: 1280, height: 800 },
-    });
-
-    await browser.close();
-    logCrawl("reddit", `Screenshot saved: ${filename}`);
-    return `${screenshotInfo.urlPrefix}/${filename}`;
-  } catch (error) {
-    if (browser) await browser.close();
-    logCrawl("reddit", `Screenshot failed for ${postId}: ${error.message}`);
-    return null;
-  }
 }
