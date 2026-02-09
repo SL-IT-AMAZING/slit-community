@@ -137,6 +137,34 @@ export async function crawlWithScreenshot(
     // 콘텐츠 로딩 대기 (X, Threads 등은 JS로 동적 로딩)
     await page.waitForTimeout(8000);
 
+    // X 플랫폼: Following 탭 클릭 (For you 탭 대신)
+    if (platform === "x") {
+      try {
+        const followingTab = await page.$(
+          'a[href="/home"][role="tab"]:has-text("Following")',
+        );
+        if (followingTab) {
+          await followingTab.click();
+          logCrawl(platform, "Clicked Following tab");
+          await page.waitForTimeout(5000); // Following 탭 콘텐츠 로딩 대기
+        } else {
+          // 대체 셀렉터 시도
+          const tabs = await page.$$('a[role="tab"]');
+          for (const tab of tabs) {
+            const text = await tab.innerText();
+            if (text.includes("Following") || text.includes("팔로잉")) {
+              await tab.click();
+              logCrawl(platform, "Clicked Following tab (alt selector)");
+              await page.waitForTimeout(5000);
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        logCrawl(platform, `Following tab click failed: ${err.message}`);
+      }
+    }
+
     // 랜덤 딜레이 (봇 감지 방지)
     await page.waitForTimeout(1000 + Math.random() * 2000);
 

@@ -12,7 +12,11 @@ import {
   FaChartLine,
 } from "react-icons/fa6";
 
-import BaseSocialCard, { MetricItem, formatRelativeTime, ImageLightbox } from "./base-social-card";
+import BaseSocialCard, {
+  MetricItem,
+  formatRelativeTime,
+  ImageLightbox,
+} from "./base-social-card";
 import DetailModal from "./detail-modal";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -113,9 +117,10 @@ export default function GitHubCard({
       <BaseSocialCard
         platform="github"
         platformIcon={FaGithub}
-        externalUrl={externalUrl || `https://github.com/${repoOwner}/${repoName}`}
+        externalUrl={
+          externalUrl || `https://github.com/${repoOwner}/${repoName}`
+        }
         className={className}
-        onClick={() => setModalOpen(true)}
       >
         {/* Repo Name */}
         <div className="flex items-center gap-2">
@@ -142,11 +147,16 @@ export default function GitHubCard({
             >
               {llmSummary?.summary ? (
                 <>
-                  <p className="text-sm text-foreground">{llmSummary.summary}</p>
+                  <p className="text-sm text-foreground">
+                    {llmSummary.summary}
+                  </p>
                   {llmSummary.features && llmSummary.features.length > 0 && (
                     <ul className="mt-2 space-y-0.5">
                       {llmSummary.features.slice(0, 3).map((feature, i) => (
-                        <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <li
+                          key={i}
+                          className="flex items-start gap-1.5 text-xs text-muted-foreground"
+                        >
                           <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
                           {feature}
                         </li>
@@ -154,7 +164,7 @@ export default function GitHubCard({
                     </ul>
                   )}
                   {llmSummary.beginner_description && (
-                    <p className="mt-2 text-xs text-muted-foreground italic">
+                    <p className="mt-2 text-xs italic text-muted-foreground">
                       💡 {llmSummary.beginner_description}
                     </p>
                   )}
@@ -195,7 +205,7 @@ export default function GitHubCard({
         {/* README Image (스크린샷 - GitHub만) - 클릭하면 확대 */}
         {readmeImageUrl && (
           <div
-            className="mt-3 overflow-hidden rounded-base border-2 border-border cursor-pointer hover:opacity-90 transition-opacity"
+            className="mt-3 cursor-pointer overflow-hidden rounded-base border-2 border-border transition-opacity hover:opacity-90"
             onClick={(e) => {
               e.stopPropagation();
               setImageLightboxOpen(true);
@@ -244,7 +254,11 @@ export default function GitHubCard({
           <MetricItem icon={FaStar} value={stars} label="Stars" />
           <MetricItem icon={FaCodeBranch} value={forks} label="Forks" />
           {issues !== undefined && (
-            <MetricItem icon={FaCircleExclamation} value={issues} label="Issues" />
+            <MetricItem
+              icon={FaCircleExclamation}
+              value={issues}
+              label="Issues"
+            />
           )}
           {trendshiftRank && (
             <span className="flex items-center gap-1 text-purple-500">

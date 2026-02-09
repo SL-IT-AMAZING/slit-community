@@ -1,4 +1,9 @@
-import { crawlWithScreenshot, loadCookies, loadCookiesFromEnv, fetchPostDetails } from "./screenshot-crawler.js";
+import {
+  crawlWithScreenshot,
+  loadCookies,
+  loadCookiesFromEnv,
+  fetchPostDetails,
+} from "./screenshot-crawler.js";
 import { upsertCrawledContent, logCrawl, getScreenshotDir } from "./index.js";
 
 const FEED_URL = "https://www.threads.com/";
@@ -26,15 +31,24 @@ export async function crawlThreads({ limit = 20 } = {}) {
   logCrawl("threads", `Screenshots will be saved to: ${screenshotInfo.dir}`);
 
   try {
-    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot("threads", FEED_URL, cookies, screenshotInfo);
+    const { screenshot: feedScreenshot, links } = await crawlWithScreenshot(
+      "threads",
+      FEED_URL,
+      cookies,
+      screenshotInfo,
+    );
 
-    logCrawl("threads", `Feed screenshot captured, found ${links.length} links`);
+    logCrawl(
+      "threads",
+      `Feed screenshot captured, found ${links.length} links`,
+    );
 
     // Threads 포스트 링크 필터링 (threads.net 또는 threads.com)
     const postLinks = links.filter(
       (link) =>
-        (link.href.includes("threads.net/@") || link.href.includes("threads.com/@")) &&
-        link.href.includes("/post/")
+        (link.href.includes("threads.net/@") ||
+          link.href.includes("threads.com/@")) &&
+        link.href.includes("/post/"),
     );
 
     // 고유한 포스트 ID 추출
@@ -70,8 +84,16 @@ export async function crawlThreads({ limit = 20 } = {}) {
       // 스크린샷 + 미디어 다운로드
       let postDetails = { screenshotUrl: null, downloadedMedia: [] };
       try {
-        postDetails = await fetchPostDetails("threads", link.href, cookies, screenshotInfo);
-        logCrawl("threads", `Captured: ${postId} (${postDetails.downloadedMedia?.length || 0} media)`);
+        postDetails = await fetchPostDetails(
+          "threads",
+          link.href,
+          cookies,
+          screenshotInfo,
+        );
+        logCrawl(
+          "threads",
+          `Captured: ${postId} (${postDetails.downloadedMedia?.length || 0} media)`,
+        );
       } catch (err) {
         logCrawl("threads", `Failed for ${postId}: ${err.message}`);
       }
@@ -82,17 +104,14 @@ export async function crawlThreads({ limit = 20 } = {}) {
         url: link.href,
         author_name: username ? `@${username}` : null,
         author_url: username ? `https://www.threads.net/@${username}` : null,
-        screenshot_url: postDetails.screenshotUrl,
+        screenshot_url: null,
         status: "pending_analysis",
         raw_data: {
-          feedScreenshot,
-          screenshotUrls: postDetails.screenshotUrls || [],
           downloadedMedia: postDetails.downloadedMedia || [],
           mediaUrls: postDetails.mediaUrls || [],
           externalLinks: postDetails.externalLinks || [],
-          // Threads 네이티브 비디오
           threadsVideoUrl: postDetails.threadsVideoUrl || null,
-          downloadedVideoUrl: postDetails.downloadedVideoUrl || null, // 로컬 다운로드된 비디오
+          downloadedVideoUrl: postDetails.downloadedVideoUrl || null,
           hasVideo: postDetails.hasVideo || false,
         },
       });

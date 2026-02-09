@@ -1,11 +1,14 @@
 # Ownuun Article - 추천 콘텐츠 추가
 
-사용자가 전달한 글을 마크다운으로 다듬어서 추천 콘텐츠(Featured Content)로 DB에 추가합니다.
+`.claude/article_draft.md` 파일에 작성된 글을 마크다운으로 다듬어서 추천 콘텐츠(Featured Content)로 DB에 추가합니다.
 
 ## 사용법
 
+1. `.claude/article_draft.md` 파일에 글 작성
+2. `/ownuun_article` 실행
+
 ```
-/ownuun_article <글 내용>
+/ownuun_article
 ```
 
 ## 카테고리 목록
@@ -29,9 +32,19 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 
 ## 워크플로우
 
+### 0단계: 원본 글 읽기
+
+`.claude/article_draft.md` 파일을 읽어서 원본 글을 가져옵니다.
+
+```
+Read 도구로 .claude/article_draft.md 파일 읽기
+```
+
+---
+
 ### 1단계: 글 분석 및 메타데이터 추출
 
-사용자가 전달한 글에서 다음 정보를 추출/생성:
+읽어온 글에서 다음 정보를 추출/생성:
 
 **추출할 정보:**
 

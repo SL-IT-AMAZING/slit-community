@@ -1,25 +1,29 @@
 # Ownuun Main Pipeline
 
-6개 SNS 콘텐츠를 크롤링 → 분석 → 게시하는 메인 파이프라인입니다.
+5개 SNS 플랫폼 콘텐츠를 **병렬로** 크롤링 → 분석 → 게시하는 메인 오케스트레이터입니다.
 
-**에이전트가 직접 모든 분석을 수행합니다. 외부 API 호출 없음.**
+**각 플랫폼별 독립 실행도 가능**: `/ownuun_x`, `/ownuun_threads`, `/ownuun_reddit`, `/ownuun_youtube`, `/ownuun_github`
+
+---
 
 ## 아키텍처
 
 ```
 /ownuun_main (오케스트레이터)
     │
-    ├─ Phase 1: 병렬 크롤링 (5개 curl 동시 실행)
-    │      ├─ GitHub: curl → DB 저장
-    │      ├─ YouTube: curl → DB 저장
-    │      ├─ Reddit: curl → DB 저장
-    │      ├─ X: curl → DB 저장
-    │      └─ Threads: curl → DB 저장
+    ├─ Phase 1: 병렬 크롤링 (5개 스크립트 동시 실행)
+    │      ├─ node scripts/crawl-github.mjs
+    │      ├─ node scripts/crawl-youtube.mjs
+    │      ├─ node scripts/crawl-reddit.mjs
+    │      ├─ node scripts/crawl-x.mjs
+    │      └─ node scripts/crawl-threads.mjs
     │
-    ├─ Phase 2: 에이전트 직접 분석
-    │      ├─ 각 플랫폼별 슬래시커맨드 병렬 실행
-    │      ├─ look_at 도구로 스크린샷 Vision 분석
-    │      └─ DB 업데이트
+    ├─ Phase 2: 에이전트 직접 분석 (5개 Task 병렬)
+    │      ├─ /ownuun_x → X 분석
+    │      ├─ /ownuun_threads → Threads 분석
+    │      ├─ /ownuun_reddit → Reddit 분석
+    │      ├─ /ownuun_youtube → YouTube 분석
+    │      └─ /ownuun_github → GitHub 분석 (llm_summary 생성)
     │
     ├─ Phase 3: 게시
     │      ├─ 7점 이상: 자동 게시
@@ -33,36 +37,59 @@
 
 ## Phase 1: 병렬 크롤링
 
-**5개 curl 명령을 병렬로 실행합니다.**
+**5개 크롤러를 병렬로 실행합니다.**
 
-```bash
-# GitHub
-curl -s -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "github", "options": {"since": "daily", "limit": 25}}'
+> **최소 크롤링 규정**: 각 SNS 플랫폼별 최소 **10개 이상** 크롤링 필수
 
-# YouTube
-curl -s -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "youtube"}'
+### Step 0: GitHub 크롤링 옵션 확인 (필수)
 
-# Reddit
-curl -s -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "reddit", "options": {"limit": 20}}'
+**크롤링 실행 전 사용자에게 GitHub 옵션을 물어봅니다:**
 
-# X
-curl -s -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "x", "options": {"limit": 20}}'
+```
+GitHub 크롤링 옵션을 선택해주세요:
 
-# Threads
-curl -s -X POST http://localhost:3000/api/crawler/run \
-  -H 'Content-Type: application/json' \
-  -d '{"platform": "threads", "options": {"limit": 20}}'
+1. 기간 (since):
+   - daily (기본) - 오늘의 트렌딩
+   - weekly - 이번 주 트렌딩
+   - monthly - 이번 달 트렌딩
+   - all - daily + weekly + monthly 모두
+
+2. 개수 (limit): 기본 25개 (최소 10개)
+
+3. 언어별 크롤링 (includeLanguages):
+   - false (기본) - 전체 트렌딩만
+   - true - 주요 14개 언어별 트렌딩도 포함
+     (python, javascript, typescript, go, rust, java, c++, c, swift, kotlin, php, c#, ruby, dart)
+
+예시 응답: "daily, 25개, 언어별 포함" 또는 "weekly만 20개"
 ```
 
-### 크롤링 결과 확인
+### Step 1: 5개 크롤러 병렬 실행
+
+```bash
+# 병렬 실행 (각 터미널 또는 백그라운드)
+cd /Users/ownuun/conductor/workspaces/v2-v1/kiev
+
+# GitHub (사용자 옵션에 따라)
+node scripts/crawl-github.mjs --since=daily --limit=25
+
+# 또는 전체 기간
+node scripts/crawl-github.mjs --all
+
+# YouTube (24시간 내 구독 피드에서 자동 수집)
+node scripts/crawl-youtube.mjs
+
+# Reddit (최소 10개, 권장 20개)
+node scripts/crawl-reddit.mjs --limit=20
+
+# X (최소 10개, 권장 20개)
+node scripts/crawl-x.mjs --limit=20
+
+# Threads (최소 10개, 권장 20개)
+node scripts/crawl-threads.mjs --limit=20
+```
+
+### 크롤링 결과 확인 (최소 10개 검증 포함)
 
 ```bash
 cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
@@ -70,15 +97,41 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+const MINIMUM_REQUIRED = 10;
+
 async function check() {
   const platforms = ['github', 'youtube', 'reddit', 'x', 'threads'];
+  const results = {};
+  let allPassed = true;
+
+  console.log('=== 크롤링 결과 확인 (최소 ' + MINIMUM_REQUIRED + '개 규정) ===\n');
+
   for (const p of platforms) {
     const { count } = await supabase
       .from('crawled_content')
       .select('*', { count: 'exact', head: true })
       .eq('platform', p)
       .in('status', ['pending', 'pending_analysis']);
-    console.log(p + ': ' + (count || 0) + '개 대기');
+
+    const actualCount = count || 0;
+    const passed = actualCount >= MINIMUM_REQUIRED;
+    const status = passed ? '✅' : '❌ (부족: ' + (MINIMUM_REQUIRED - actualCount) + '개 더 필요)';
+
+    results[p] = { count: actualCount, passed };
+    if (!passed) allPassed = false;
+
+    console.log(status + ' ' + p + ': ' + actualCount + '개 대기');
+  }
+
+  console.log('');
+  if (allPassed) {
+    console.log('✅ 모든 플랫폼이 최소 ' + MINIMUM_REQUIRED + '개 요구사항 충족');
+  } else {
+    console.log('⚠️ 일부 플랫폼이 최소 ' + MINIMUM_REQUIRED + '개 미달 - 추가 크롤링 필요');
+    console.log('   미달 플랫폼의 경우:');
+    console.log('   - 쿠키 만료 확인 (X, Threads)');
+    console.log('   - 피드에 콘텐츠가 부족한지 확인');
+    console.log('   - 크롤러를 다시 실행하거나 limit 값 증가');
   }
 }
 check();
@@ -86,8 +139,6 @@ check();
 ```
 
 ### GitHub Token 필요 여부 확인 (Star History)
-
-GitHub 크롤링 후 Star History 스크린샷에 토큰이 필요한 경우 확인:
 
 ```bash
 cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node -e "
@@ -118,38 +169,36 @@ checkTokenNeeded();
 "
 ```
 
-**토큰 필요 시 사용자에게 요청:**
-
-Star History 캡처에 GitHub 토큰이 필요합니다. 토큰을 제공해주시면 `.env.local`에 저장하고 다시 크롤링하겠습니다.
-
-토큰 생성 방법:
-
-1. https://github.com/settings/tokens 접속
-2. "Generate new token (classic)" 클릭
-3. 권한: `public_repo` 선택
-4. 토큰 복사 후 제공
-
 ---
 
 ## Phase 2: 에이전트 직접 분석
 
 **각 플랫폼별 슬래시커맨드를 병렬로 Task 도구로 실행합니다.**
 
+### Reddit Link Post 자동 본문 추출
+
+Reddit 크롤러는 **Link Post** (외부 URL을 공유하는 게시물)의 경우 자동으로 해당 URL의 본문을 추출합니다:
+
+- `selftext`가 50자 미만이고 외부 URL이 있으면 → `extractContent()`로 본문 추출
+- 추출된 본문은 `content_text` (영어)에 저장
+- 분석 시 `/ownuun_reddit`에서 한국어 번역 → `translated_content`에 저장
+- 게시 시 `body_en = content_text`, `body = translated_content`로 매핑
+
 ```
-[4개 Task 도구 병렬 호출]
+[5개 Task 도구 병렬 호출]
 
 Task 1 - X 분석:
-  prompt: "/ownuun_x 실행하여 pending_analysis 상태의 X 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
+  prompt: "/ownuun_x Phase 2만 실행 (분석만). pending_analysis 상태의 X 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
 
 Task 2 - Threads 분석:
-  prompt: "/ownuun_threads 실행하여 pending_analysis 상태의 Threads 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
+  prompt: "/ownuun_threads Phase 2만 실행 (분석만). pending_analysis 상태의 Threads 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
 
 Task 3 - Reddit 분석:
-  prompt: "/ownuun_reddit 실행하여 pending_analysis 상태의 Reddit 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
+  prompt: "/ownuun_reddit Phase 2만 실행 (분석만). pending_analysis 상태의 Reddit 콘텐츠를 모두 분석하고 DB 업데이트. 완료 후 분석 개수와 평균 점수 반환."
 
 Task 4 - YouTube 분석 (⚠️ 상세 분석 필수):
   prompt: |
-    /ownuun_youtube 실행. 반드시 아래 요구사항을 준수:
+    /ownuun_youtube Phase 2만 실행 (분석만). 반드시 아래 요구사항을 준수:
 
     1. **자막 추출**: youtube-transcript.js의 getTranscript() + formatTranscriptWithTimestamps() 사용하여 타임스탬프 포함된 자막 추출
     2. **timeline 필수 요구사항**:
@@ -161,6 +210,18 @@ Task 4 - YouTube 분석 (⚠️ 상세 분석 필수):
     4. **품질 검증**: timeline.length < 1500이면 재분석
 
     완료 후 분석 개수, 평균 점수, 평균 timeline 길이 반환.
+
+Task 5 - GitHub 분석:
+  prompt: |
+    /ownuun_github Phase 2만 실행 (분석만). pending_analysis 상태의 GitHub 콘텐츠를 분석하고 DB 업데이트.
+
+    각 레포마다:
+    1. README 스크린샷(screenshot_url) 분석하여 프로젝트 이해
+    2. 한국어/영어 소개글 생성
+    3. llm_summary 생성: { summary, features, targetAudience, beginner_description }
+    4. raw_data.llm_summary에 저장
+
+    완료 후 분석 개수 반환.
 ```
 
 ### 분석 결과 확인
@@ -282,9 +343,11 @@ cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/cleanup-videos.
 ## 전체 실행 흐름
 
 ```
-1. Phase 1 - 크롤링 (5개 curl 병렬)
-2. Phase 2 - 분석 (4개 슬래시커맨드 Task 병렬)
-   - 에이전트가 look_at으로 스크린샷 직접 분석
+1. Phase 1 - 크롤링 (5개 스크립트 병렬)
+2. Phase 2 - 분석 (5개 슬래시커맨드 Task 병렬)
+   - X, Threads, Reddit: look_at으로 스크린샷 분석
+   - YouTube: 자막 추출 → 상세 분석
+   - GitHub: README 분석 → llm_summary 생성
    - DB 업데이트
 3. Phase 3 - 게시 (점수 기반)
 4. Phase 4 - 스토리지 정리 (선택)
@@ -301,6 +364,22 @@ cd /Users/ownuun/conductor/workspaces/v2-v1/kiev && node scripts/cleanup-videos.
 | 5-6  | 선택적. 괜찮지만 특별하지 않음            |
 | 3-4  | 비추천. 주제와 거리 있음                  |
 | 1-2  | 제외. 스팸성/관련 없음                    |
+
+---
+
+## 개별 플랫폼 실행
+
+각 플랫폼을 독립적으로 실행하려면:
+
+| 플랫폼  | 커맨드            |
+| ------- | ----------------- |
+| X       | `/ownuun_x`       |
+| Threads | `/ownuun_threads` |
+| Reddit  | `/ownuun_reddit`  |
+| YouTube | `/ownuun_youtube` |
+| GitHub  | `/ownuun_github`  |
+
+각 커맨드는 크롤링 → 분석 → 게시 전체 파이프라인을 독립적으로 수행합니다.
 
 ---
 

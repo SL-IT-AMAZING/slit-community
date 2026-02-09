@@ -7,9 +7,9 @@ import { FaReddit, FaArrowUp, FaAward } from "react-icons/fa6";
 import BaseSocialCard, {
   AuthorInfo,
   MediaGrid,
+  ImageLightbox,
   formatRelativeTime,
 } from "./base-social-card";
-import DetailModal from "./detail-modal";
 
 export default function RedditCard({
   title,
@@ -37,7 +37,8 @@ export default function RedditCard({
 
   const [expanded, setExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const contentRef = useRef(null);
 
   const MAX_HEIGHT = 120; // 최대 높이 (px)
@@ -52,23 +53,9 @@ export default function RedditCard({
   const allMediaUrls =
     mediaUrls.length > 0 ? mediaUrls : mediaUrl ? [mediaUrl] : [];
 
-  const modalData = {
-    title,
-    content,
-    subreddit,
-    authorName,
-    authorAvatar,
-    upvotes,
-    downvotes,
-    commentCount,
-    awards,
-    publishedAt,
-    mediaUrl,
-    mediaUrls: allMediaUrls,
-    externalUrl,
-    metricsHistory,
-    translatedTitle,
-    translatedContent,
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
   };
 
   return (
@@ -78,7 +65,6 @@ export default function RedditCard({
         platformIcon={FaReddit}
         externalUrl={externalUrl}
         className={className}
-        onClick={() => setModalOpen(true)}
       >
         {/* Subreddit & Author */}
         <div className="flex items-center gap-2">
@@ -153,8 +139,21 @@ export default function RedditCard({
           </div>
         )}
 
-        {/* Media Grid */}
-        {allMediaUrls.length > 0 && <MediaGrid mediaUrls={allMediaUrls} />}
+        {/* Media */}
+        {allMediaUrls.length > 0 && (
+          <div className="mt-3 overflow-hidden rounded-xl border-2 border-border">
+            <img
+              src={allMediaUrls[0]}
+              alt=""
+              className="aspect-video w-full cursor-pointer object-cover transition-opacity hover:opacity-90"
+              loading="lazy"
+              onClick={(e) => {
+                e.stopPropagation();
+                openLightbox(0);
+              }}
+            />
+          </div>
+        )}
 
         {/* Awards */}
         {awards && awards.length > 0 && (
@@ -201,12 +200,11 @@ export default function RedditCard({
         </div>
       </BaseSocialCard>
 
-      {/* Detail Modal */}
-      <DetailModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        platform="reddit"
-        data={modalData}
+      <ImageLightbox
+        images={allMediaUrls}
+        initialIndex={lightboxIndex}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
       />
     </>
   );

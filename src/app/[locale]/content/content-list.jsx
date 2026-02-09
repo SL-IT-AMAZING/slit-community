@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ import {
   FaList,
   FaBars,
 } from "react-icons/fa6";
+import { ImSpinner8 } from "react-icons/im";
+
+const ITEMS_PER_PAGE = 12;
 
 const contentTypes = [
   "article",
@@ -48,7 +51,6 @@ const categories = [
   "research-papers",
 ];
 
-// 타입을 플랫폼으로 매핑
 const TYPE_TO_PLATFORM = {
   video: "youtube",
   "x-thread": "x",
@@ -74,11 +76,18 @@ const getDateRangeFilter = (range) => {
 
 export default function ContentList({
   initialContent,
+  initialTotal,
   locale,
   initialType = null,
 }) {
   const t = useTranslations();
   const currentLocale = useLocale();
+
+  const [content, setContent] = useState(initialContent);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(
+    initialTotal ? initialContent.length < initialTotal : true,
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState(
@@ -93,9 +102,57 @@ export default function ContentList({
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("grid");
 
+  const loaderRef = useRef(null);
+
+  const loadMore = useCallback(async () => {
+    if (isLoading || !hasMore) return;
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/content?limit=${ITEMS_PER_PAGE}&offset=${content.length}`,
+      );
+      const result = await response.json();
+
+      if (result.data && result.data.length > 0) {
+        setContent((prev) => [...prev, ...result.data]);
+        setHasMore(result.hasMore);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("Failed to load more content:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [content.length, isLoading, hasMore]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasMore && !isLoading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" },
+    );
+
+    const currentLoader = loaderRef.current;
+    if (currentLoader) {
+      observer.observe(currentLoader);
+    }
+
+    return () => {
+      if (currentLoader) {
+        observer.unobserve(currentLoader);
+      }
+    };
+  }, [loadMore, hasMore, isLoading]);
+
   const filteredContent = useMemo(() => {
-    let result = initialContent.filter((item) => {
-      // Search filter
+    let result = content.filter((item) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const title = (
@@ -113,12 +170,10 @@ export default function ContentList({
         }
       }
 
-      // Type filter (multiple selection)
       if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) {
         return false;
       }
 
-      // Category filter (multiple selection)
       if (
         selectedCategories.length > 0 &&
         !selectedCategories.includes(item.category)
@@ -126,12 +181,10 @@ export default function ContentList({
         return false;
       }
 
-      // Premium/Free filter
       if (premiumFilter !== null && item.is_premium !== premiumFilter) {
         return false;
       }
 
-      // Date range filter
       if (dateRange !== "all") {
         const minDate = getDateRangeFilter(dateRange);
         if (minDate && new Date(item.published_at) < minDate) {
@@ -142,18 +195,16 @@ export default function ContentList({
       return true;
     });
 
-    // Sort
     result.sort((a, b) => {
       if (sortBy === "popular") {
         return (b.view_count || 0) - (a.view_count || 0);
       }
-      // Default: newest
       return new Date(b.published_at) - new Date(a.published_at);
     });
 
     return result;
   }, [
-    initialContent,
+    content,
     searchQuery,
     selectedTypes,
     selectedCategories,
@@ -203,7 +254,6 @@ export default function ContentList({
 
   return (
     <div className="container py-8">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="mb-2 font-cera text-3xl font-bold">
           {t("content.hub.title")}
@@ -211,10 +261,8 @@ export default function ContentList({
         <p className="text-muted-foreground">{t("content.hub.subtitle")}</p>
       </div>
 
-      {/* Search and Filter Bar */}
       <div className="mb-6 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row">
-          {/* Search Input */}
           <div className="relative flex-1">
             <FaMagnifyingGlass
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -229,7 +277,6 @@ export default function ContentList({
             />
           </div>
 
-          {/* View Mode Toggle */}
           <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
             <button
               onClick={() => setViewMode("grid")}
@@ -266,7 +313,6 @@ export default function ContentList({
             </button>
           </div>
 
-          {/* Sort Select */}
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder={t("content.filters.sort")} />
@@ -281,7 +327,6 @@ export default function ContentList({
             </SelectContent>
           </Select>
 
-          {/* Filter Toggle */}
           <Button
             variant={showFilters ? "default" : "outline"}
             onClick={() => setShowFilters(!showFilters)}
@@ -297,7 +342,6 @@ export default function ContentList({
           </Button>
         </div>
 
-        {/* Filter Panel */}
         {showFilters && (
           <div className="rounded-lg border bg-card p-4">
             <div className="mb-4 flex items-center justify-between">
@@ -311,7 +355,6 @@ export default function ContentList({
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Content Type Filter */}
               <div>
                 <span className="mb-2 block text-sm font-medium">
                   {t("content.filters.contentType")}
@@ -338,7 +381,6 @@ export default function ContentList({
                 </div>
               </div>
 
-              {/* Category Filter */}
               <div>
                 <span className="mb-2 block text-sm font-medium">
                   {t("content.filters.category")}
@@ -367,7 +409,6 @@ export default function ContentList({
                 </div>
               </div>
 
-              {/* Premium/Free Filter */}
               <div>
                 <span className="mb-2 block text-sm font-medium">
                   {t("content.filters.access")}
@@ -397,7 +438,6 @@ export default function ContentList({
                 </div>
               </div>
 
-              {/* Date Range Filter */}
               <div>
                 <span className="mb-2 block text-sm font-medium">
                   {t("content.filters.dateRange")}
@@ -427,54 +467,71 @@ export default function ContentList({
         )}
       </div>
 
-      {/* Results count */}
       <div className="mb-4 text-sm text-muted-foreground">
         {t("content.resultsCount", { count: filteredContent.length })}
+        {hasMore && !hasActiveFilters && " +"}
       </div>
 
-      {/* Content Grid */}
       {filteredContent.length > 0 ? (
-        <div
-          className={
-            viewMode === "grid"
-              ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-              : viewMode === "list"
-                ? "flex flex-col gap-4"
-                : "flex flex-col gap-2"
-          }
-        >
-          {filteredContent.map((item) => {
-            if (isSocialPlatform(item.type)) {
+        <>
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                : viewMode === "list"
+                  ? "flex flex-col gap-4"
+                  : "flex flex-col gap-2"
+            }
+          >
+            {filteredContent.map((item) => {
+              if (isSocialPlatform(item.type)) {
+                return (
+                  <SocialCardRenderer
+                    key={item.id}
+                    content={item}
+                    variant={viewMode}
+                  />
+                );
+              }
+
               return (
-                <SocialCardRenderer
+                <ContentCard
                   key={item.id}
-                  content={item}
                   variant={viewMode}
+                  slug={item.slug}
+                  title={item.title}
+                  titleEn={item.title_en}
+                  description={item.description}
+                  descriptionEn={item.description_en}
+                  type={item.type}
+                  category={item.category}
+                  isPremium={item.is_premium}
+                  viewCount={item.view_count}
+                  thumbnailUrl={item.thumbnail_url}
+                  publishedAt={item.published_at}
+                  isBookmarked={bookmarkedIds.has(item.id)}
+                  onBookmarkToggle={() => handleBookmarkToggle(item.id)}
                 />
               );
-            }
+            })}
+          </div>
 
-            return (
-              <ContentCard
-                key={item.id}
-                variant={viewMode}
-                slug={item.slug}
-                title={item.title}
-                titleEn={item.title_en}
-                description={item.description}
-                descriptionEn={item.description_en}
-                type={item.type}
-                category={item.category}
-                isPremium={item.is_premium}
-                viewCount={item.view_count}
-                thumbnailUrl={item.thumbnail_url}
-                publishedAt={item.published_at}
-                isBookmarked={bookmarkedIds.has(item.id)}
-                onBookmarkToggle={() => handleBookmarkToggle(item.id)}
-              />
-            );
-          })}
-        </div>
+          {hasMore && !hasActiveFilters && (
+            <div
+              ref={loaderRef}
+              className="flex items-center justify-center py-8"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <ImSpinner8 className="animate-spin" size={20} />
+                  <span>{t("common.loading")}</span>
+                </div>
+              ) : (
+                <div className="h-8" />
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border py-16">
           <p className="mb-4 text-muted-foreground">{t("content.noResults")}</p>
